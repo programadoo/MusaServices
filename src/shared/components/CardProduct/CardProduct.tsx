@@ -19,7 +19,7 @@ const CardProduct = ({ name, price, image }: Product) => {
   };
 
   const handleCustomPreview = () => {
-    window.open("https://a543e114fbf8fade28.gradio.live/");
+    window.open("https://a77eb193f7769d489a.gradio.live/");
   };
 
   const redirect = () => {

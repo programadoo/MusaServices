@@ -1,8 +1,6 @@
 // ...otros imports
-import React from "react";
 import { useContext, useState } from "react";
 import { EcommerceContext } from "../shared/context/ecommerceContext";
-import { Product } from "../shared/models/product.modul";
 import SizeButtons from "../shared/components/infoProducts/SizeButtons";
 import PaypalButtonComponent from "../shared/components/Paypal/PaypalButtonComponent";
 
@@ -150,7 +148,7 @@ const InfoProducts = () => {
                   ${selectedProduct?.price}
                 </span>
                 <span className="text-lg text-gray-500 line-through">
-                  ${selectedProduct?.price + 100.99}
+                  ${(selectedProduct?.price + 100.99).toFixed(2)}
                 </span>
                 <span className="px-2 py-1 text-xs font-medium text-white bg-red-500 rounded-md">
                   -25%
