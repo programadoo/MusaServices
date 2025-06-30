@@ -9,7 +9,8 @@ interface SizeI {
   text_color1: string;
 }
 const SizeButtons = () => {
-  const { selectedSize, handleSize } = useContext(EcommerceContext);
+  const context = useContext(EcommerceContext) as any;
+  const { selectedSize, handleSize } = context;
   const [selectedSizeBtn, setSelectedSizeBtn] = useState<SizeI[]>([
     {
       size: "XS",

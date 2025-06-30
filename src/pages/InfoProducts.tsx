@@ -5,7 +5,8 @@ import SizeButtons from "../shared/components/infoProducts/SizeButtons";
 import PaypalButtonComponent from "../shared/components/Paypal/PaypalButtonComponent";
 
 const InfoProducts = () => {
-  const { initState, handleSize } = useContext(EcommerceContext);
+  const context = useContext(EcommerceContext) as any;
+  const { initState, handleSize } = context;
   const [initCounter, setInitCounter] = useState<number>(0);
   const handleInitCounter = () => {
     setInitCounter(1);

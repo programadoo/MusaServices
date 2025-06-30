@@ -1,6 +1,9 @@
 import React from "react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+
 const PaypalButtonComponent = () => {
+  const productSelected = localStorage.getItem("productSelected");
+  const product = productSelected !== null ? JSON.parse(productSelected) : null;
   const initialOptions = {
     clientId:
       "AYUKXuOaMrhTBV7nHxKahuFnRK8atwWKCA14svggdsw-_ePftKYO2_3L1ehI4WWYenl7yKAYWm1kTkjY",
@@ -13,7 +16,7 @@ const PaypalButtonComponent = () => {
         {
           amount: {
             currency_code: "USD",
-            value: "5",
+            value: product?.price.toString(),
           },
         },
       ],

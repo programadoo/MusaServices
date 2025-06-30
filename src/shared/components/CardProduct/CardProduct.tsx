@@ -10,7 +10,8 @@ interface Product {
 //import { useNavigate } from "react-router-dom";
 const CardProduct = ({ name, price, image }: Product) => {
   const navigate = useNavigate();
-  const { handleSelectedState } = useContext(EcommerceContext);
+  const context = useContext(EcommerceContext) as any;
+  const { handleSelectedState } = context;
   const handleQuickPreview = () => {
     /* window.open("https://a543e114fbf8fade28.gradio.live/"); */
     window.open(
@@ -19,7 +20,7 @@ const CardProduct = ({ name, price, image }: Product) => {
   };
 
   const handleCustomPreview = () => {
-    window.open("https://a77eb193f7769d489a.gradio.live/");
+    window.open("https://14effd88bc0b48395e.gradio.live");
   };
 
   const redirect = () => {
@@ -27,7 +28,7 @@ const CardProduct = ({ name, price, image }: Product) => {
     navigate("/info");
   };
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
+    <div className="product-card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition">
       <div className="relative pb-[2%]">
         <div className="relative w-full h-[330px] inset-0 bg-gray-200  flex items-center justify-center">
           {image !== undefined ? (
