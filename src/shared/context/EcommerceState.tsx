@@ -5,84 +5,91 @@ const EcommerceState = ({ children }: { children: ReactNode }) => {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [initState, setInitState] = useState([
     {
-      name: "Abrigo Elegante",
+      name: "Proud",
       price: 129.99,
       description:
-        "Abrigo elegante con capucha y bolsillos ideal para temporada de invierno",
+        "",
       quantity: 15,
-      image: "src/assets/images/abrigo_marron.png",
+      image: "src/assets/images/proud.jpeg",
+      aiImage: "src/assets/images/proud_final.png",
       selected: false,
       stars: 4,
       reviews: 15,
+      aiCategory: "dresses", // Ejemplo
+      aiDescription: "A taupe tailored double-breasted vest and matching wide-leg trousers, formal office wear",
     },
 
     {
-      name: "Vestido de Boda",
+      name: "Monalisa",
       price: 400.65,
-      description: "Vestido de boda para ocasiones importantes y únicas",
+      description: "",
       quantity: 6,
-      image: "src/assets/images/vestido_blanco.png",
+      image: "src/assets/images/monalisa.jpeg",
+      aiImage: "src/assets/images/monalisa_final.png",
       selected: false,
       stars: 5,
       reviews: 31,
+      aiCategory: "dresses", // Ejemplo
+      aiDescription: "A brown linen off-the-shoulder jumpsuit with a wide-leg cut, elegant and textured",
     },
 
     {
-      name: "Vestido Azul de Gala",
+      name: "Giallo",
       price: 100.1,
-      description: "Vestido de gala para festejos de etiqueta",
+      description: "",
       quantity: 8,
-      image: "src/assets/images/vestido_azul.png",
+      image: "src/assets/images/giallo.jpeg",
+      aiImage: "src/assets/images/giallo_final.png",
       selected: false,
       stars: 4,
       reviews: 23,
+      aiCategory: "dresses", // Ejemplo
+      aiDescription: "A beige halter-neck jumpsuit with a square neckline and prominent utility pockets on the thighs, slim fit",
     },
 
     {
-      name: "Jeans Casuales",
+      name: "Expensive",
       price: 29.99,
-      description: "Jeans casuales con diseño moderno y confortable",
+      description: "",
       quantity: 55,
-      image: "src/assets/images/jeans_dama.png",
+      image: "src/assets/images/expensive.jpeg",
+      aiImage: "src/assets/images/expensive_final.png",
       selected: false,
       stars: 5,
       reviews: 25,
+      aiCategory: "dresses", // Ejemplo
+      aiDescription: "A white structured asymmetric blazer with a high-neck scarf detail and wide-leg tailored trousers, couture style",
     },
 
     {
-      name: "Blusa CH",
+      name: "Classic",
       price: 135.5,
-      description: "Blusa de Carolina Herrera para la temporada de primavera",
+      description: "",
       quantity: 17,
-      image: "src/assets/images/blusa_blanca.png",
+      image: "src/assets/images/classic.jpeg",
+      aiImage: "src/assets/images/clasic_final.png",
       selected: false,
       stars: 3,
       reviews: 5,
+      aiCategory: "dresses", // Ejemplo
+      aiDescription: "A cream-colored tailored vest and matching wide-leg trousers, formal style",
     },
 
     {
-      name: "Chaqueta Verde Versage",
+      name: "Musa",
       price: 95.2,
       description:
-        "Chaqueta verde de Versage para la temporada de invierno y salidas casuales",
+        "",
       quantity: 9,
-      image: "src/assets/images/chaqueta_verde.png",
+      image: "src/assets/images/musa.jpeg",
+      aiImage: "src/assets/images/musa_final.png",
       selected: false,
       stars: 4,
       reviews: 17,
+      aiCategory: "dresses", // Ejemplo
+      aiDescription: "A white strapless jumpsuit with a black belt and a straight-leg cut",
     },
 
-    {
-      name: "Top Rosado Casual",
-      price: 20.0,
-      description:
-        "Top rosado con diseño casual y confortable para el uso diario en la casa",
-      quantity: 67,
-      image: "src/assets/images/top_rosado.png",
-      selected: false,
-      stars: 4,
-      reviews: 35,
-    },
   ] as Product[]);
 
   const [selectedSize, setSelectedSize] = useState<string>();

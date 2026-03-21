@@ -2,13 +2,13 @@ export interface Product {
   name: string;
   price: number;
   description?: string;
-  quantity: number;
   image?: string;
+  aiImage: string;
   selected: boolean;
   stars: number;
   reviews: number;
-}
-
-export interface Sizes {
-  size: string;
+  
+  // Agrega estas propiedades para la IA:
+  aiCategory?: "dresses" | "upper_body" | "lower_body"; 
+  aiDescription?: string;
 }
