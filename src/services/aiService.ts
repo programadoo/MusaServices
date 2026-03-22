@@ -15,7 +15,7 @@ export const predictTryOn = async (
     ]);
 
     // 2. Llamamos a tu servidor local usando la IP de tu PC para que el móvil pueda conectar
-    const response = await fetch('http://192.168.0.104:3001/api/try-on', {
+    const response = await fetch('http://192.168.0.102:3001/api/try-on', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

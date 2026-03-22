@@ -3,20 +3,28 @@ import { useContext } from "react";
 import { EcommerceContext } from "../../context/ecommerceContext";
 
 interface ProductProps {
+  id: string | number; // Añadimos el ID para la ruta dinámica
   name: string;
   price: number;
   image?: string;
+  productData: any; // Pasamos el objeto completo para el localStorage
   onTryOn: () => void;
 }
 
-const CardProduct = ({ name, price, image, onTryOn }: ProductProps) => {
+const CardProduct = ({ id, name, price, image, productData, onTryOn }: ProductProps) => {
   const navigate = useNavigate();
   const context = useContext(EcommerceContext) as any;
   const { handleSelectedState } = context;
 
   const redirect = () => {
-    handleSelectedState(name);
-    navigate("/info");
+    // 1. Guardamos en el Context (tu lógica actual)
+    handleSelectedState(name); 
+    
+    // 2. Guardamos el objeto completo para que InfoProducts lo lea al recargar
+    localStorage.setItem("productSelected", JSON.stringify(productData));
+    
+    // 3. Navegamos a la ruta dinámica /info/123
+    navigate(`/info/${id}`);
   };
 
   return (
@@ -35,13 +43,11 @@ const CardProduct = ({ name, price, image, onTryOn }: ProductProps) => {
           </div>
         )}
         
-        {/* Badge Flotante */}
         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-pink-600 shadow-sm border border-white/50">
           IA Ready
         </div>
       </div>
 
-      {/* Info y Acciones */}
       <div className="p-6">
         <h3 className="text-lg font-bold text-gray-900 mb-1">{name}</h3>
         <p className="text-sm text-gray-500 mb-6 font-medium">${price.toLocaleString()}</p>
@@ -54,13 +60,15 @@ const CardProduct = ({ name, price, image, onTryOn }: ProductProps) => {
             Detalles
           </button>
           
-          {/* Botón Probar Estilo Optimizado */}
           <button 
-            onClick={onTryOn} 
+            onClick={(e) => {
+                e.stopPropagation(); // Evita conflictos si el padre tiene clics
+                onTryOn();
+            }} 
             className="w-full py-3 rounded-full bg-pink-500 text-white font-bold text-[11px] uppercase tracking-widest hover:bg-pink-600 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-pink-200"
           >
             <i className="fas fa-magic text-[10px]"></i>
-            <span className="whitespace-nowrap">Probar</span>
+            <span className="whitespace-nowrap">Probar con Musa</span>
           </button>
         </div>
       </div>
