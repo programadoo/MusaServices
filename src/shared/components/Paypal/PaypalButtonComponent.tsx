@@ -1,35 +1,45 @@
-import React from "react";
+import React, { useContext } from "react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+// Importamos el contexto para acceder al total real del carrito
+import { EcommerceContext } from "../../context/ecommerceContext";
 
 const PaypalButtonComponent = () => {
-  const productSelected = localStorage.getItem("productSelected");
-  const product = productSelected !== null ? JSON.parse(productSelected) : null;
+  // Extraemos el total y la función para limpiar el carrito del contexto
+  const context = useContext(EcommerceContext);
+
+  // Si por alguna razón el contexto no carga, no mostramos el botón
+  if (!context) return null;
+  const { total, clearCart } = context;
+
   const initialOptions = {
-    clientId:
-      "AYUKXuOaMrhTBV7nHxKahuFnRK8atwWKCA14svggdsw-_ePftKYO2_3L1ehI4WWYenl7yKAYWm1kTkjY",
+    clientId: "AYUKXuOaMrhTBV7nHxKahuFnRK8atwWKCA14svggdsw-_ePftKYO2_3L1ehI4WWYenl7yKAYWm1kTkjY",
     currency: "USD",
     intent: "capture",
   };
-  const createOrder = (data, actions) => {
+
+  const createOrder = (data: any, actions: any) => {
     return actions.order.create({
       purchase_units: [
         {
+          description: "Compra en VillaTech", // Descripción para el recibo de PayPal
           amount: {
             currency_code: "USD",
-            value: product?.price.toString(),
+            // IMPORTANTE: Ahora usamos el total global del carrito
+            value: total.toFixed(2).toString(), 
           },
         },
       ],
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onApprove = (data: any, actions: any) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return actions.order.capture().then(function (details: any) {
-      alert("Trnasacción completada por: " + details.payer.name.given_name);
+      alert("Transacción completada por: " + details.payer.name.given_name);
+      // Limpiamos el carrito después de un pago exitoso
+      clearCart();
     });
   };
+
   return (
     <PayPalScriptProvider options={initialOptions}>
       <PayPalButtons
@@ -39,9 +49,11 @@ const PaypalButtonComponent = () => {
           shape: "rect",
           label: "pay",
         }}
+        // Para evitar errores si el total es 0, deshabilitamos el botón si no hay nada
+        disabled={total <= 0}
         createOrder={(data, actions) => createOrder(data, actions)}
         onApprove={(data, actions) => onApprove(data, actions)}
-      ></PayPalButtons>
+      />
     </PayPalScriptProvider>
   );
 };

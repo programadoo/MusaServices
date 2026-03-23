@@ -1,10 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useContext } from "react";
 import { EcommerceContext } from "../context/ecommerceContext";
+// 1. IMPORTAMOS TU BOTÓN DE PAYPAL
+import PaypalButtonComponent from "./Paypal/PaypalButtonComponent";
 
 export const CartDrawer = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-  // Eliminamos el "as any" para usar el tipado correcto si es posible, 
-  // pero mantengo la estructura que tenías para no romper nada.
   const context = useContext(EcommerceContext);
   
   if (!context) return null;
@@ -15,7 +15,6 @@ export const CartDrawer = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Overlay con desenfoque editorial */}
           <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
@@ -24,7 +23,6 @@ export const CartDrawer = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
             className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200]" 
           />
           
-          {/* Drawer Lateral */}
           <motion.div 
             initial={{ x: "100%" }} 
             animate={{ x: 0 }} 
@@ -94,7 +92,7 @@ export const CartDrawer = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
                       <div className="flex items-center justify-between mt-3">
                         <p className="text-gray-900 font-black text-sm tracking-tight">${item.price}</p>
                         <button 
-                          onClick={() => removeFromCart(item.id, item.size)} // <--- CORREGIDO: Ahora pasa ID y Talla
+                          onClick={() => removeFromCart(item.id, item.size)}
                           className="text-[10px] font-black text-gray-300 hover:text-red-500 uppercase tracking-widest transition-colors"
                         >
                           Eliminar
@@ -118,17 +116,19 @@ export const CartDrawer = ({ isOpen, onClose }: { isOpen: boolean, onClose: () =
                 </span>
               </div>
               
-              <button 
-                disabled={cart.length === 0}
-                className={`w-full py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3
-                  ${cart.length === 0 
-                    ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none" 
-                    : "bg-black text-white hover:bg-pink-600 hover:shadow-pink-200"
-                  }`}
-              >
-                <span>Finalizar Pedido</span>
-                <i className="fas fa-arrow-right text-[10px]"></i>
-              </button>
+              {/* 2. REEMPLAZAMOS EL BOTÓN POR EL DE PAYPAL */}
+              <div className="mt-4">
+                {cart.length > 0 ? (
+                  <PaypalButtonComponent />
+                ) : (
+                  <button 
+                    disabled
+                    className="w-full py-5 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] bg-gray-100 text-gray-400 cursor-not-allowed"
+                  >
+                    Bolsa Vacía
+                  </button>
+                )}
+              </div>
               
               <p className="text-center text-[8px] text-gray-400 uppercase font-bold tracking-widest mt-6">
                 <i className="fas fa-lock mr-2"></i> Pago 100% Seguro vía VillaTech Gateway
