@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { EcommerceContext } from "../shared/context/ecommerceContext";
+import { EcommerceContext } from "../shared/context/EcommerceContext";
 import { Product } from "../shared/models/product.modul";
 import CardProduct from "../shared/components/CardProduct/CardProduct";
 import { ModalTryOn } from "../shared/components/ModalTryOn";
@@ -10,78 +10,22 @@ import "../assets/styles/style.css";
 const Home = () => {
   const context = useContext(EcommerceContext) as any;
   const arrProducts: Product[] = context?.initState || [];
-  const cart = context?.cart || [];
   
-  // Extraemos la función para abrir el carrito desde el Contexto Global
-  const { openCart } = context; 
-
   const [, setReloadFlag] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) setReloadFlag((prev) => !prev);
     };
     window.addEventListener("pageshow", onPageShow);
-
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    window.addEventListener("scroll", handleScroll);
-
-    return () => {
-      window.removeEventListener("pageshow", onPageShow);
-      window.removeEventListener("scroll", handleScroll);
-    };
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
-
-  const cartItemsCount = cart.reduce((acc: number, item: any) => acc + item.qty, 0);
 
   return (
     <div className="min-h-screen bg-[#F8F8F8] text-gray-900 overflow-x-hidden font-sans scroll-smooth">
       
-      {/* 1. NAVBAR DINÁMICO */}
-      <nav className={`fixed w-full z-[100] top-0 left-0 transition-all duration-300 ${
-        isScrolled ? "bg-white/95 backdrop-blur-md border-b border-gray-100 py-0 shadow-sm" : "bg-transparent border-transparent py-2"
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center overflow-hidden shadow-md">
-                <img src="src/assets/images/logo_proyecto.jpeg" alt="L" className="object-cover" />
-            </div>
-            <Link to="/" className="text-xl md:text-2xl font-black tracking-tighter uppercase">
-              ICONIC <span className="text-pink-500 text-sm align-top">C.V.F</span>
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-4 md:gap-8">
-            <div className="hidden md:flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.2em]">
-              <Link to="/products" className="hover:text-pink-500 transition-colors">Colecciones</Link>
-              <a href="#tendencias" className="hover:text-pink-500 transition-colors">Tendencias</a>
-            </div>
-            
-            {/* BOTÓN DEL CARRITO CONECTADO AL CONTEXTO */}
-            <button 
-              onClick={openCart} 
-              className="relative p-2 hover:bg-gray-100 rounded-full transition-colors group"
-            >
-                <i className="fas fa-shopping-bag text-lg group-hover:text-pink-500"></i>
-                {cartItemsCount > 0 && (
-                    <span className="absolute top-0 right-0 bg-pink-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                        {cartItemsCount}
-                    </span>
-                )}
-            </button>
-
-            <Link to="/products" className="px-5 py-2 md:px-6 md:py-2.5 bg-black text-white rounded-full hover:bg-pink-600 hover:shadow-lg transition-all text-xs font-bold uppercase tracking-widest active:scale-95">
-              Explorar
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* 2. HERO SECTION */}
+      {/* 1. HERO SECTION */}
       <section className="relative pt-32 pb-16 md:pt-48 md:pb-32 px-6 bg-white">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 md:gap-12 items-center">
           <motion.div 
@@ -96,7 +40,7 @@ const Home = () => {
               Vístete <br /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">Digital</span>
             </h1>
             <p className="text-base md:text-lg text-gray-500 max-w-md mx-auto md:mx-0 leading-relaxed font-medium">
-              Fusionamos la alta costura con inteligencia artificial generativa. Experimenta el futuro hoy.
+              Fusionamos la alta costura con inteligencia artificial generativa. Experimenta el futuro hoy en ICONIC C.V.F.
             </p>
             <Link to="/products" className="inline-block w-full md:w-auto bg-black text-white px-10 py-5 rounded-full font-bold hover:bg-gray-800 hover:scale-105 transition-all shadow-2xl uppercase text-xs tracking-widest text-center">
                 Comprar Ahora
@@ -129,7 +73,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. CARACTERÍSTICAS */}
+      {/* 2. CARACTERÍSTICAS */}
       <section id="tendencias" className="py-16 md:py-24 bg-white border-t border-gray-50 scroll-mt-20">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10">
             {[
@@ -152,7 +96,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 4. PRODUCT GRID */}
+      {/* 3. PRODUCT GRID */}
       <section id="coleccion" className="py-16 md:py-24 max-w-7xl mx-auto px-6 scroll-mt-24">
         <div className="mb-10 md:mb-16 border-l-4 border-pink-500 pl-6 flex justify-between items-end">
           <div>
@@ -195,7 +139,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 5. RESEÑAS */}
+      {/* 4. RESEÑAS */}
       <section className="py-16 md:py-24 bg-white border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12 md:mb-20">
@@ -225,52 +169,6 @@ const Home = () => {
           </div>
         </div>
       </section>
-
-      {/* 6. FOOTER */}
-      <footer className="bg-[#0A0A0A] text-white pt-16 pb-12 md:pt-24 md:pb-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-16 mb-16 md:mb-20">
-            <div className="md:col-span-5 space-y-6 md:space-y-8 text-center md:text-left">
-              <h3 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">Iconic <span className="text-pink-500">C.V.F</span></h3>
-              <p className="text-gray-400 text-base md:text-lg leading-relaxed max-w-sm mx-auto md:mx-0">
-                Redefiniendo el e-commerce de moda a través de la inteligencia artificial y la innovación tecnológica.
-              </p>
-              <div className="flex justify-center md:justify-start gap-4">
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center hover:bg-pink-500 hover:scale-110 transition-all cursor-pointer">
-                    <i className="fab fa-instagram text-xl"></i>
-                </div>
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center hover:bg-pink-500 hover:scale-110 transition-all cursor-pointer">
-                    <i className="fab fa-tiktok text-xl"></i>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:col-span-7 gap-8 text-center md:text-left">
-                <div>
-                  <h4 className="font-black uppercase text-[11px] tracking-[0.2em] text-pink-500 mb-6 md:mb-8">Empresa</h4>
-                  <ul className="space-y-4 text-gray-400 font-medium text-xs md:text-sm">
-                    <li><Link to="/about" className="hover:text-white transition-colors">Sobre Nosotros</Link></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Tecnología Musa</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Contacto</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-black uppercase text-[11px] tracking-[0.2em] text-pink-500 mb-6 md:mb-8">Soporte</h4>
-                  <ul className="space-y-4 text-gray-400 font-medium text-xs md:text-sm">
-                    <li><a href="#" className="hover:text-white transition-colors">Guía de Uso IA</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Envíos</a></li>
-                    <li><a href="#" className="hover:text-white transition-colors">Privacidad</a></li>
-                  </ul>
-                </div>
-            </div>
-          </div>
-          <div className="pt-12 border-t border-white/10 text-center flex flex-col items-center justify-center gap-4">
-            <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-[0.4em]">
-              &copy; 2026 ICONIC C.V.F. TODOS LOS DERECHOS RESERVADOS.
-            </p>
-            <p className="text-[8px] text-gray-700 font-black uppercase tracking-widest">Powered by Musa Engine</p>
-          </div>
-        </div>
-      </footer>
 
       {/* MODAL TRY-ON */}
       <ModalTryOn 
