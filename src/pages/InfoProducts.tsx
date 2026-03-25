@@ -1,15 +1,15 @@
 import { useContext, useEffect, useState } from "react";
-import { EcommerceContext } from "../shared/context/ecommerceContext";
+import { EcommerceContext } from "../shared/context/EcommerceContext";
 import SizeButtons from "../shared/components/infoProducts/SizeButtons";
 import PaypalButtonComponent from "../shared/components/Paypal/PaypalButtonComponent";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Product } from "../shared/models/product.modul";
+import { motion, AnimatePresence } from "framer-motion";
 
 const InfoProducts = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // Usamos el contexto actualizado que ahora incluye 'initState'
   const context = useContext(EcommerceContext) as any;
   const { handleSize, addToCart, openCart, initState, size: contextSize } = context;
 
@@ -22,14 +22,11 @@ const InfoProducts = () => {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    
-    // Buscamos el producto en el catálogo inicial (ahora sincronizado como initState)
     const productFromState = initState?.find((p: Product) => String(p.id) === String(id));
 
     if (productFromState) {
       setSelectedProduct(productFromState);
     } else {
-      // Respaldo en LocalStorage si no está en el estado global
       const productRaw = localStorage.getItem("productSelected");
       if (productRaw) {
         const parsedData = JSON.parse(productRaw);
@@ -45,8 +42,11 @@ const InfoProducts = () => {
 
   if (!selectedProduct) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-pink-500"></div>
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 border-t-2 border-pink-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-2 border-t-2 border-purple-500 rounded-full animate-spin-slow"></div>
+        </div>
       </div>
     );
   }
@@ -57,109 +57,119 @@ const InfoProducts = () => {
 
   const handleInitCounter = (size: string) => {
     setSelectedSize(size);
-    handleSize(size); // Sincroniza con el contexto global
+    handleSize(size);
     setInitCounter(1);
   };
 
   const incrementQty = () => setQuantity(prev => prev + 1);
   const decrementQty = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1));
 
-  // --- LÓGICA DE AGREGAR BLINDADA ---
   const onAddToCart = () => {
-    // Verificamos si hay una talla seleccionada localmente o en el contexto
     const finalSize = selectedSize || contextSize;
-
     if (!finalSize) {
-      alert("Por favor selecciona una talla antes de continuar.");
+      alert("Por favor selecciona una talla.");
       return;
     }
     
     setIsAdding(true);
+    const itemForCart = { ...selectedProduct, qty: quantity, size: finalSize };
+    if (addToCart) addToCart(itemForCart);
 
-    // Creamos el objeto asegurando que la propiedad se llame 'size'
-    // Esto es vital para que el findIndex del Contexto funcione
-    const itemForCart = { 
-      ...selectedProduct, 
-      qty: quantity, 
-      size: finalSize 
-    };
-
-    if (addToCart) {
-      addToCart(itemForCart);
-    }
-
-    // Feedback visual y apertura del drawer
     setTimeout(() => {
       setIsAdding(false);
       if (openCart) openCart();
-    }, 600);
+    }, 800);
   };
 
   return (
-    <div className="bg-white min-h-screen font-sans selection:bg-pink-100">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 md:pt-32 pb-4">
-        <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-          <Link to="/" className="hover:text-black transition-colors">Inicio</Link>
-          <span>/</span>
-          <Link to="/products" className="hover:text-black transition-colors">Colecciones</Link>
-          <span>/</span>
-          <span className="text-gray-900">{selectedProduct?.name}</span>
+    <div className="bg-[#0A0A0A] min-h-screen text-white selection:bg-pink-500/30">
+      {/* NAVEGACIÓN SUTIL */}
+      <nav className="max-w-7xl mx-auto px-6 pt-32 pb-6">
+        <div className="flex items-center space-x-3 text-[9px] font-black uppercase tracking-[0.3em] text-gray-500">
+          <Link to="/" className="hover:text-pink-500 transition-colors">Musa</Link>
+          <span className="opacity-20">/</span>
+          <Link to="/products" className="hover:text-pink-500 transition-colors">Drops</Link>
+          <span className="opacity-20">/</span>
+          <span className="text-gray-300">{selectedProduct?.name}</span>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col lg:flex-row gap-12 items-start">
+      <main className="max-w-7xl mx-auto px-6 py-4 pb-32">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-12 lg:gap-20 items-start">
           
-          <div className="w-full lg:w-3/5 space-y-4">
-            <div className="relative w-full overflow-hidden bg-gray-50 border border-gray-100 shadow-sm group">
+          {/* COLUMNA IZQUIERDA: VISUALS */}
+          <div className="w-full lg:col-span-7 space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative aspect-[3/4] rounded-[3rem] overflow-hidden bg-[#111111] border border-white/5 group"
+            >
               <img
                 src={cleanImageSrc}
                 alt={selectedProduct?.name}
-                className="w-full h-auto aspect-[3/4] md:aspect-square object-cover object-top transition-transform duration-1000 group-hover:scale-110"
+                className="w-full h-full object-cover object-top transition-transform duration-[2s] group-hover:scale-110"
               />
-              <div className="absolute top-6 left-6 bg-black/90 backdrop-blur-md px-4 py-2">
-                <p className="text-[10px] font-black text-white uppercase tracking-[0.2em]">
-                  Musa AI <span className="text-pink-500">Verified</span>
+              <div className="absolute top-8 left-8 bg-black/60 backdrop-blur-xl border border-white/10 px-5 py-2.5 rounded-2xl">
+                <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                  <span className="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></span>
+                  Musa <span className="text-gray-400">v1.0 Ready</span>
                 </p>
               </div>
-            </div>
+            </motion.div>
 
+            {/* THUMBNAILS ESTILO EDITORIAL */}
             <div className="grid grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="aspect-square bg-gray-100 border-2 border-transparent hover:border-black cursor-pointer overflow-hidden transition-all group">
-                  <img src={cleanImageSrc} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt="thumbnail" />
+                <div key={i} className="aspect-square bg-[#111111] rounded-3xl border border-white/5 hover:border-pink-500/50 cursor-pointer overflow-hidden transition-all group">
+                  <img src={cleanImageSrc} className="w-full h-full object-cover opacity-40 group-hover:opacity-100 transition-opacity" alt="detail" />
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="w-full lg:w-2/5 flex flex-col space-y-8">
-            <header className="space-y-4">
-              <div className="inline-block px-3 py-1 bg-pink-50 text-pink-500 text-[9px] font-black uppercase tracking-widest">
-                Edición Limitada
-              </div>
-              <h1 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter uppercase leading-[0.9]">
+          {/* COLUMNA DERECHA: INFO & ACCIONES */}
+          <div className="w-full lg:col-span-5 flex flex-col space-y-10">
+            <header className="space-y-6">
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="inline-flex px-4 py-1.5 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-500 text-[10px] font-black uppercase tracking-widest"
+              >
+                Limited Edition Drop
+              </motion.div>
+              
+              <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[0.85]">
                 {selectedProduct?.name}
               </h1>
-              <div className="flex items-center gap-6 pt-2">
-                <p className="text-3xl font-bold text-gray-900 tracking-tight">${selectedProduct?.price}</p>
+
+              <div className="flex items-baseline gap-4">
+                <span className="text-4xl font-light text-white tracking-tighter">${selectedProduct?.price}</span>
+                <span className="text-gray-600 text-[10px] font-bold uppercase tracking-widest italic">Impuestos incluidos</span>
               </div>
-              <p className="text-gray-500 text-sm md:text-base leading-relaxed font-medium pt-2">
-                {selectedProduct?.aiDescription || "Una pieza esencial diseñada para destacar con elegancia."}
+
+              <p className="text-gray-400 text-base leading-relaxed font-medium italic border-l-2 border-pink-500/30 pl-6">
+                {selectedProduct?.aiDescription || "Una pieza esencial diseñada para destacar con elegancia en el entorno digital."}
               </p>
             </header>
 
-            <div className="space-y-6">
+            {/* SELECCIÓN DE TALLA */}
+            <div className="space-y-6 p-8 rounded-[2.5rem] bg-[#111111] border border-white/5">
               <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-900">Seleccionar Talla</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Talla Seleccionada</label>
+                  <button className="text-[9px] font-bold text-pink-500 uppercase tracking-widest border-b border-pink-500/20">Guía de tallas</button>
+                </div>
+                
                 <div className="flex flex-wrap gap-3">
                   {initCounter === 0 ? (
                     ["XS", "S", "M", "L", "XL"].map((size) => (
                       <button
                         key={size}
                         onClick={() => handleInitCounter(size)}
-                        className={`h-12 w-16 border-2 transition-all font-bold text-xs
-                          ${(selectedSize === size || contextSize === size) ? "border-black bg-black text-white" : "border-gray-100 text-gray-900 hover:border-black bg-white"}`}
+                        className={`h-14 w-14 rounded-2xl border transition-all duration-500 font-black text-xs
+                          ${(selectedSize === size || contextSize === size) 
+                            ? "border-pink-500 bg-pink-500 text-white shadow-[0_0_20px_rgba(236,72,153,0.3)]" 
+                            : "border-white/10 text-gray-400 hover:border-white/30 bg-white/5"}`}
                       >
                         {size}
                       </button>
@@ -170,45 +180,68 @@ const InfoProducts = () => {
                 </div>
               </div>
 
+              {/* CANTIDAD */}
               <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-900 block">Cantidad</label>
-                <div className="flex items-center w-36 h-12 border-2 border-gray-100 px-1 bg-gray-50/50">
-                  <button onClick={decrementQty} className="w-10 h-full flex items-center justify-center hover:bg-white font-bold text-lg">-</button>
-                  <span className="flex-1 text-center font-bold text-sm">{quantity}</span>
-                  <button onClick={incrementQty} className="w-10 h-full flex items-center justify-center hover:bg-white font-bold text-lg">+</button>
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Cantidad</label>
+                <div className="flex items-center w-40 h-14 bg-white/5 border border-white/10 rounded-2xl px-2">
+                  <button onClick={decrementQty} className="w-12 h-full flex items-center justify-center hover:text-pink-500 transition-colors font-bold text-xl">-</button>
+                  <span className="flex-1 text-center font-black text-sm">{quantity}</span>
+                  <button onClick={incrementQty} className="w-12 h-full flex items-center justify-center hover:text-pink-500 transition-colors font-bold text-xl">+</button>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4 pt-4">
+            {/* BOTONES DE COMPRA */}
+            <div className="space-y-4">
               <button
                 onClick={onAddToCart}
                 disabled={isAdding}
-                className={`w-full h-14 flex items-center justify-center transition-all duration-300 border-2 
+                className={`w-full h-16 rounded-[1.5rem] flex items-center justify-center transition-all duration-500 border-2 
                   ${isAdding 
-                    ? "bg-white border-green-500 text-green-500" 
-                    : "bg-black border-black text-white hover:bg-white hover:text-black"} `}
+                    ? "bg-transparent border-green-500 text-green-500" 
+                    : "bg-white border-white text-black hover:bg-transparent hover:text-white hover:border-white/20"} `}
               >
                 <span className="text-[11px] font-black uppercase tracking-[0.3em]">
-                  {isAdding ? "¡Añadido a la bolsa!" : "Añadir al carro"}
+                  {isAdding ? "System_Updated_Cart" : "Añadir a la bolsa"}
                 </span>
               </button>
               
-              <div className="pt-2 opacity-90 hover:opacity-100 transition-opacity">
+              <div className="pt-2 brightness-90 hover:brightness-110 transition-all rounded-2xl overflow-hidden">
                 <PaypalButtonComponent />
               </div>
             </div>
 
-            <div className="pt-10 border-t border-gray-100">
-              <div className="flex gap-8 mb-6">
-                <button onClick={() => setActiveTab("details")} className={`text-[10px] font-black uppercase tracking-widest border-b-2 pb-2 transition-all ${activeTab === "details" ? "border-black text-black" : "border-transparent text-gray-400"}`}>Detalles</button>
-                <button onClick={() => setActiveTab("shipping")} className={`text-[10px] font-black uppercase tracking-widest border-b-2 pb-2 transition-all ${activeTab === "shipping" ? "border-black text-black" : "border-transparent text-gray-400"}`}>Envío</button>
+            {/* TABS INFERIORES */}
+            <div className="pt-10 border-t border-white/5">
+              <div className="flex gap-10 mb-8">
+                {["details", "shipping"].map((tab) => (
+                  <button 
+                    key={tab}
+                    onClick={() => setActiveTab(tab)} 
+                    className={`text-[10px] font-black uppercase tracking-[0.4em] pb-3 transition-all relative
+                      ${activeTab === tab ? "text-white" : "text-gray-600"}`}
+                  >
+                    {tab === "details" ? "Especificaciones" : "Logística"}
+                    {activeTab === tab && (
+                      <motion.div layoutId="underline" className="absolute bottom-0 left-0 w-full h-[2px] bg-pink-500" />
+                    )}
+                  </button>
+                ))}
               </div>
-              <div className="text-xs text-gray-500 leading-relaxed font-medium">
-                {activeTab === "details" 
-                  ? <p>Inspirado en la visión vanguardista de VillaTech, este diseño utiliza materiales premium procesados bajo estándares de sostenibilidad.</p>
-                  : <p>Envíos express a toda Venezuela (24-48h). Devoluciones gratuitas dentro de los primeros 15 días.</p>}
-              </div>
+              
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="text-xs text-gray-500 leading-relaxed font-medium"
+                >
+                  {activeTab === "details" 
+                    ? <p className="italic">Procesado con el motor Musa v1.0. Este diseño utiliza polímeros sintéticos de alta fidelidad y fibras orgánicas para un ajuste dinámico.</p>
+                    : <p>Envíos prioritarios vía VillaTech Logistics. Entrega estimada en 24h para zonas urbanas. Seguimiento vía blockchain incluido.</p>}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>

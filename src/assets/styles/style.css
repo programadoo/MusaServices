@@ -1,98 +1,135 @@
-/* Animaciones para secciones con scroll reveal */
+/* 1. FUNDACIÓN DARK (Elimina el blanco en el scroll) */
+:root {
+    --musa-dark: #0A0A0A;
+    --musa-glass: rgba(255, 255, 255, 0.03);
+    --musa-border: rgba(255, 255, 255, 0.08);
+    --musa-pink: #ec4899;
+}
+
+html, body {
+    background-color: var(--musa-dark) !important;
+    color: white;
+    margin: 0;
+    padding: 0;
+    /* Evita el rebote blanco en navegadores modernos */
+    overscroll-behavior-y: none;
+    font-family: 'Inter', sans-serif; /* O tu fuente editorial */
+}
+
+/* 2. REVEAL DE SECCIONES (Sutil y fluido) */
 section {
     view-timeline-name: --reveal;
-    animation-name: show;
+    animation-name: premium-reveal;
     animation-timeline: --reveal;
     animation-fill-mode: both;
-    animation-range: entry 25% cover 50%;
+    /* Rango ajustado para que la sección ya esté presente al scrollear */
+    animation-range: entry 5% cover 35%;
 }
 
-@keyframes show {
+@keyframes premium-reveal {
     from {
         opacity: 0;
-        scale: 10%;
+        transform: translateY(40px);
+        filter: blur(5px);
     }
-
     to {
         opacity: 1;
-        scale: 100%;
+        transform: translateY(0);
+        filter: blur(0);
     }
 }
 
-/* Animación adicional para elementos que aparecen desde abajo */
-.fade-up {
-    animation: fadeUp 0.8s ease-out forwards;
+/* 3. HERO ENTRANCE (Clip-path: Efecto de revelado editorial) */
+.hero-animation {
+    animation: clipReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes clipReveal {
+    from {
+        clip-path: inset(100% 0 0 0);
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        clip-path: inset(0 0 0 0);
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* 4. TRANSICIONES DE ELEMENTOS (Inercia Suave) */
+.fade-up, .fade-left, .fade-right {
+    opacity: 0;
+    /* Usamos Quintic easing para máxima suavidad */
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-duration: 1.2s;
+    animation-fill-mode: forwards;
+}
+
+.fade-up { animation-name: fadeUp; }
+.fade-left { animation-name: fadeLeft; }
+.fade-right { animation-name: fadeRight; }
 
 @keyframes fadeUp {
-    from {
-        opacity: 0;
-        transform: translateY(50px) scale(0.9);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* Animación para elementos que aparecen desde la izquierda */
-.fade-left {
-    animation: fadeLeft 0.8s ease-out forwards;
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes fadeLeft {
-    from {
-        opacity: 0;
-        transform: translateX(-50px) scale(0.9);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0) scale(1);
-    }
-}
-
-/* Animación para elementos que aparecen desde la derecha */
-.fade-right {
-    animation: fadeRight 0.8s ease-out forwards;
+    from { transform: translateX(-30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes fadeRight {
-    from {
-        opacity: 0;
-        transform: translateX(50px) scale(0.9);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0) scale(1);
-    }
+    from { transform: translateX(30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
-/* Efecto hover para las tarjetas de productos */
+/* 5. PRODUCT CARDS (El pequeño detalle: Glow & Lift) */
 .product-card {
-    transition: all 0.3s ease;
+    background: var(--musa-glass);
+    border: 1px solid var(--musa-border);
+    transition: 
+        transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+        border-color 0.4s ease,
+        box-shadow 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .product-card:hover {
-    transform: translateY(-10px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    transform: translateY(-12px);
+    border-color: rgba(236, 72, 153, 0.3);
+    /* Brillo rosa muy sutil, no invasivo */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 
+                0 0 20px rgba(236, 72, 153, 0.1);
 }
 
-/* Animación para el hero section */
-.hero-animation {
-    animation: heroFade 1.2s ease-out forwards;
+/* 6. EXTRA: TEXTO GRADIENTE ANIMADO */
+.text-musa-gradient {
+    background: linear-gradient(90deg, #ec4899, #8b5cf6, #ec4899);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 5s linear infinite;
 }
 
-@keyframes heroFade {
-    from {
-        opacity: 0;
-        transform: translateY(30px) scale(0.95);
-    }
+@keyframes shine {
+    to { background-position: 200% center; }
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+/* 7. SCROLLBAR PERSONALIZADA (Coherencia total) */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--musa-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--musa-pink);
 }

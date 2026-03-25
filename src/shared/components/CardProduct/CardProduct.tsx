@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { useContext } from "react";
-import { EcommerceContext } from "../../context/ecommerceContext";
+import { EcommerceContext } from "../../context/EcommerceContext";
+import { motion } from "framer-motion";
 
 interface ProductProps {
-  id: string | number; // Añadimos el ID para la ruta dinámica
+  id: string | number;
   name: string;
   price: number;
   image?: string;
-  productData: any; // Pasamos el objeto completo para el localStorage
+  productData: any;
   onTryOn: () => void;
 }
 
@@ -17,61 +18,74 @@ const CardProduct = ({ id, name, price, image, productData, onTryOn }: ProductPr
   const { handleSelectedState } = context;
 
   const redirect = () => {
-    // 1. Guardamos en el Context (tu lógica actual)
     handleSelectedState(name); 
-    
-    // 2. Guardamos el objeto completo para que InfoProducts lo lea al recargar
     localStorage.setItem("productSelected", JSON.stringify(productData));
-    
-    // 3. Navegamos a la ruta dinámica /info/123
     navigate(`/info/${id}`);
   };
 
   return (
-    <div className="group bg-white rounded-3xl overflow-hidden border border-gray-100 hover:border-pink-200 transition-all duration-500 hover:shadow-2xl hover:shadow-pink-100/50">
-      {/* Contenedor de Imagen */}
-      <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+    <div className="group relative bg-[#111111] rounded-[2.5rem] overflow-hidden border border-white/5 hover:border-pink-500/30 transition-all duration-700 shadow-2xl">
+      
+      {/* Contenedor de Imagen con Overlay Gradiente */}
+      <div className="relative aspect-[3/4] overflow-hidden bg-[#1A1A1A]">
         {image ? (
           <img
             src={image}
             alt={name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 grayscale-[20%] group-hover:grayscale-0"
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-300">
-            <i className="fas fa-tshirt text-4xl"></i>
+          <div className="flex items-center justify-center h-full text-gray-800">
+            <i className="fas fa-tshirt text-5xl"></i>
           </div>
         )}
         
-        <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-pink-600 shadow-sm border border-white/50">
-          IA Ready
+        {/* Badge de IA con estilo Neon */}
+        <div className="absolute top-5 left-5 bg-black/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse"></div>
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">IA Ready</span>
+        </div>
+
+        {/* Overlay sutil al hacer hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent opacity-60"></div>
+      </div>
+
+      {/* Información del Producto */}
+      <div className="p-7 space-y-6">
+        <div className="text-center md:text-left">
+          <h3 className="text-white text-lg font-black uppercase tracking-tighter leading-tight group-hover:text-pink-500 transition-colors duration-500">
+            {name}
+          </h3>
+          <p className="text-pink-500/80 text-sm font-bold mt-1 tracking-widest italic">
+            ${price.toLocaleString()}
+          </p>
+        </div>
+        
+        <div className="flex flex-col gap-3">
+          {/* Botón Detalles: Minimalista Dark */}
+          <button
+            onClick={redirect}
+            className="w-full py-4 rounded-2xl border border-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all duration-500"
+          >
+            Ver Detalles
+          </button>
+          
+          {/* Botón Probar: El Call to Action de MUSA */}
+          <button 
+            onClick={(e) => {
+                e.stopPropagation();
+                onTryOn();
+            }} 
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-600 to-purple-700 text-white font-black text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-lg shadow-pink-900/20 hover:scale-[1.02] active:scale-95 transition-all duration-500"
+          >
+            <i className="fas fa-magic text-xs"></i>
+            <span>Musa Try-On</span>
+          </button>
         </div>
       </div>
 
-      <div className="p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-1">{name}</h3>
-        <p className="text-sm text-gray-500 mb-6 font-medium">${price.toLocaleString()}</p>
-        
-        <div className="flex flex-col gap-3">
-          <button
-            onClick={redirect}
-            className="w-full py-3 rounded-full border border-gray-900 text-gray-900 font-bold text-sm hover:bg-gray-900 hover:text-white transition-all duration-300"
-          >
-            Detalles
-          </button>
-          
-          <button 
-            onClick={(e) => {
-                e.stopPropagation(); // Evita conflictos si el padre tiene clics
-                onTryOn();
-            }} 
-            className="w-full py-3 rounded-full bg-pink-500 text-white font-bold text-[11px] uppercase tracking-widest hover:bg-pink-600 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-pink-200"
-          >
-            <i className="fas fa-magic text-[10px]"></i>
-            <span className="whitespace-nowrap">Probar con Musa</span>
-          </button>
-        </div>
-      </div>
+      {/* Glow Efecto Background al hacer Hover */}
+      <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-pink-500/10 blur-[80px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
     </div>
   );
 };

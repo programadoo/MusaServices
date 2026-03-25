@@ -1,32 +1,41 @@
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useContext } from "react";
+
+// Páginas
 import Home from "./pages/Home";
 import Products from "./pages/Products"; 
 import InfoProducts from "./pages/InfoProducts";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import MusaAI from "./pages/MusaAI"; 
+import Profile from "./pages/Profile";
 
-// Importamos los componentes modulares
+// Componentes Globales y Seguridad
 import { Navbar } from "./shared/components/Navbar";
 import { Footer } from "./shared/components/Footer";
 import { CartDrawer } from "./shared/components/CartDrawer";
+import { ProtectedRoute } from "./shared/components/ProtectedRoute"; 
 
-// Importamos el State (Provider) y el Contexto
+// Contextos y Providers
 import EcommerceState from "./shared/context/EcommerceState";
 import { EcommerceContext } from "./shared/context/EcommerceContext"; 
+import { AuthProvider } from "./shared/context/AuthContext";
 
 const AppContent = () => {
-  // Extraemos el estado del contexto global
   const context = useContext(EcommerceContext);
+  const location = useLocation();
 
-  // Si el contexto no está listo, no renderizamos nada para evitar errores
   if (!context) return null;
 
   const { isCartOpen, closeCart } = context as any;
 
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
+
   return (
-    <>
-      {/* 1. NAVBAR GLOBAL: Aparecerá en todas las rutas */}
-      <Navbar />
+    <div className="relative w-full min-h-screen flex flex-col bg-white">
+      {/* 1. NAVBAR GLOBAL */}
+      {!isAuthPage && <Navbar />}
 
       {/* 2. CARRITO GLOBAL */}
       <CartDrawer 
@@ -34,37 +43,52 @@ const AppContent = () => {
         onClose={closeCart} 
       />
 
-      {/* Contenedor principal con un min-h-screen y flex-col 
-         para que el footer siempre se empuje al fondo 
+      {/* QUITAMOS: paddings o márgenes que limiten el ancho. 
+          El main ahora permite que cada sección interna del Home maneje su ancho.
       */}
-      <div className="flex flex-col min-h-screen">
-        <main className="flex-grow">
-          <Routes>
-            <Route index element={<Home />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/info/:id" element={<InfoProducts />} /> 
-            {/* Aquí puedes añadir la ruta de Musa AI cuando la tengas lista */}
-            {/* <Route path="/musa-ai" element={<MusaAI />} /> */}
-          </Routes>
-        </main>
+      <main className="flex-grow w-full">
+        <Routes>
+          <Route index element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/info/:id" element={<InfoProducts />} /> 
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          <Route 
+            path="/musa-ai" 
+            element={
+              <ProtectedRoute>
+                <MusaAI />
+              </ProtectedRoute>
+            } 
+          />
 
-        {/* 3. FOOTER GLOBAL: Se mantiene al final de cada página */}
-        <Footer />
-      </div>
-    </>
+          <Route 
+            path="/perfil" 
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </main>
+
+      {/* 3. FOOTER GLOBAL */}
+      {!isAuthPage && <Footer />}
+    </div>
   );
 };
 
 function App() {
   return (
-    /* EcommerceState provee los datos de los productos 
-      y la lógica del carrito a toda la aplicación.
-    */
-    <EcommerceState>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </EcommerceState>
+    <AuthProvider>
+      <EcommerceState>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </EcommerceState>
+    </AuthProvider>
   );
 }
 

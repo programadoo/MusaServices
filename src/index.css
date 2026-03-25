@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* RESET TOTAL PARA EL CONTENEDOR DE REACT */
+#root {
+  width: 100% !important;
+  max-width: none !important; /* Esto mata la caja de 1280px */
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block !important; /* Evita que flex lo centre */
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
