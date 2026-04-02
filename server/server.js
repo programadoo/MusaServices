@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import compression from 'compression'; // Mejora de rendimiento
 import mongoose from 'mongoose';
 import connectDB from './config/db.js';
+import './workers/aiWorker.js'; // Solo importarlo para que se ejecute
 
 // --- 🛣️ IMPORTACIÓN DE RUTAS ---
 import authRoutes from './routes/authRoutes.js';

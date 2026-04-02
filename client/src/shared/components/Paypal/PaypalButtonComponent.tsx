@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 // Importamos el contexto para acceder al total real del carrito
-import { EcommerceContext } from "../../context/ecommerceContext";
+import { EcommerceContext } from "../../context/EcommerceContext";
 
 const PaypalButtonComponent = () => {
   // Extraemos el total y la función para limpiar el carrito del contexto
@@ -12,7 +12,7 @@ const PaypalButtonComponent = () => {
   const { total, clearCart } = context;
 
   const initialOptions = {
-    clientId: "AYUKXuOaMrhTBV7nHxKahuFnRK8atwWKCA14svggdsw-_ePftKYO2_3L1ehI4WWYenl7yKAYWm1kTkjY",
+    clientId: import.meta.env.VITE_PAYPAL_CLIENT_ID,
     currency: "USD",
     intent: "capture",
   };

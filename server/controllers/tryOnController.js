@@ -1,55 +1,79 @@
-import { replicate, supabase } from '../config/services.js';
+import { aiQueue } from '../config/queue.js';
 import User from '../models/User.js';
 import Generation from '../models/Generation.js';
-import { optimizeImage } from '../utils/imageHelper.js'; // La crearemos en el siguiente paso
-import { performance } from 'perf_hooks';
-import axios from 'axios';
+import { supabase } from '../config/services.js';
+import { optimizeImage } from '../utils/imageHelper.js';
 
 export const handleTryOn = async (req, res) => {
   let user = null;
-  let fileName = null; 
   try {
     const { personUri, garmentUri, garmentDescription, category } = req.body;
     const userId = req.user.id;
 
+    // 1. Validaciones iniciales
     user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
     if (user.credits <= 0) return res.status(403).json({ error: "Créditos insuficientes." });
 
+    // 2. Optimización (se mantiene aquí porque es rápida y necesaria antes de encolar)
     const [pOpt, gOpt] = await Promise.all([
       optimizeImage(personUri, "Foto de persona"),
       optimizeImage(garmentUri, "Foto de prenda")
     ]);
 
+    // 3. Descontar créditos preventivamente
     user.credits -= 1;
     await user.save();
 
-    const prediction = await replicate.predictions.create({
-      version: "0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
-      input: { human_img: pOpt, garm_img: gOpt, garment_des: garmentDescription, category, is_checked: true }
+    // 4. ENCOLAR TAREA EN BULLMQ
+    // Pasamos todos los datos necesarios para que el Worker haga el resto
+    const job = await aiQueue.add('tryon-job', {
+      userId,
+      personUri: pOpt,
+      garmentUri: gOpt,
+      garmentDescription,
+      category
+    }, {
+      attempts: 2, // Si falla la API de Replicate, reintenta 1 vez
+      backoff: 5000 // Espera 5 seg entre reintentos
     });
 
-    const result = await replicate.wait(prediction);
-    const replicateUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-
-    const imgRes = await axios.get(replicateUrl, { responseType: 'arraybuffer' });
-    fileName = `musa_${userId}_${Date.now()}.png`;
-    
-    await supabase.storage.from('musa-designs').upload(fileName, Buffer.from(imgRes.data), { contentType: 'image/png' });
-    const { data: { publicUrl } } = supabase.storage.from('musa-designs').getPublicUrl(fileName);
-
-    const newGen = new Generation({ 
-      userId, personImage: pOpt, garmentImage: gOpt, resultImage: publicUrl, category, description: garmentDescription 
+    // 5. Respuesta inmediata al cliente
+    res.status(202).json({ 
+      message: "Procesando en los servidores de Villatech...", 
+      jobId: job.id, 
+      remainingCredits: user.credits 
     });
-    await newGen.save();
 
-    res.json({ image: publicUrl, remainingCredits: user.credits });
   } catch (error) {
-    if (user) { user.credits += 1; await user.save(); }
-    res.status(500).json({ error: "Fallo en el motor de IA." });
+    console.error("Error en handleTryOn:", error);
+    if (user) { 
+      user.credits += 1; 
+      await user.save(); 
+    }
+    res.status(500).json({ error: "No se pudo iniciar el proceso de IA." });
   }
 };
 
+// --- NUEVA FUNCIÓN: CONSULTAR ESTADO ---
+export const getJobStatus = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = await aiQueue.getJob(jobId);
+
+    if (!job) return res.status(404).json({ error: "Tarea no encontrada." });
+
+    const state = await job.getState(); // completed, failed, active, waiting
+    const progress = job.progress;
+    const result = job.returnvalue; // Aquí estará el publicUrl enviado por el Worker
+
+    res.json({ state, progress, result });
+  } catch (error) {
+    res.status(500).json({ error: "Error al obtener estado." });
+  }
+};
+
+// --- HISTORIAL (Se mantiene igual) ---
 export const getHistory = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -67,11 +91,9 @@ export const deleteHistory = async (req, res) => {
     const gen = await Generation.findById(id);
     if (!gen || gen.userId.toString() !== req.user.id) return res.status(403).json({ error: "No autorizado." });
     
-    // Eliminamos la imagen de Supabase para no ocupar espacio basura
     const fileNameToDelete = gen.resultImage.split('/').pop();
     await supabase.storage.from('musa-designs').remove([fileNameToDelete]);
     
-    // Eliminamos el registro de MongoDB
     await Generation.findByIdAndDelete(id);
     res.json({ message: "Registro eliminado correctamente." });
   } catch (error) { 
