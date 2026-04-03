@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { predictTryOn } from '../../services/aiService';
+// Importamos las nuevas funciones del servicio actualizado
+import { startTryOnJob, checkJobStatus } from '../../services/aiService';
 import { AuthContext } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from 'react-hot-toast';
@@ -32,11 +33,10 @@ export const ModalTryOn: React.FC<ModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const [statusMessage, setStatusMessage] = useState("Iniciando motor...");
+  const [statusMessage, setStatusMessage] = useState("Esperando archivo...");
   
   // --- ESTADOS DEL COMPARADOR VISUAL ---
   const [sliderPos, setSliderPos] = useState(50);
-  const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Bloqueo de scroll al abrir modal
@@ -46,46 +46,13 @@ export const ModalTryOn: React.FC<ModalProps> = ({
     return () => { document.body.style.overflow = "unset"; };
   }, [isOpen]);
 
-  // Preview de la foto cargada por el usuario
+  // Preview de la foto cargada
   useEffect(() => {
     if (!file) { setLocalPhotoUrl(null); return; }
     const url = URL.createObjectURL(file);
     setLocalPhotoUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
-
-  // --- LÓGICA DE PROGRESO Y MENSAJES ---
-  useEffect(() => {
-    let interval: any;
-    let timeoutIds: any[] = [];
-    if (loading) {
-      setProgress(5);
-      interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev < 30) return prev + 2;
-          if (prev < 70) return prev + 0.5;
-          if (prev < 98) return prev + 0.1;
-          return prev;
-        });
-      }, 200);
-
-      const messages = [
-        { time: 0, msg: "Analizando morfología..." },
-        { time: 4000, msg: "Mapeando texturas del Drop..." },
-        { time: 10000, msg: "Sincronizando con Musa Engine v1.0..." },
-        { time: 18000, msg: "Renderizando caída de tela..." },
-      ];
-
-      messages.forEach(({ time, msg }) => {
-        const id = setTimeout(() => setStatusMessage(msg), time);
-        timeoutIds.push(id);
-      });
-    }
-    return () => { 
-        clearInterval(interval); 
-        timeoutIds.forEach(clearTimeout); 
-    };
-  }, [loading]);
 
   const handleMove = (e: any) => {
     if (!containerRef.current) return;
@@ -96,33 +63,76 @@ export const ModalTryOn: React.FC<ModalProps> = ({
     setSliderPos(position);
   };
 
+  /**
+   * LÓGICA PRINCIPAL: PROCESAMIENTO CON POLLING
+   */
   const handleProcess = async () => {
     if (!file) return;
-    if (!user || !user.id) {
+    if (!user?.id) {
       toast.error("⚠️ Error: Debes iniciar sesión.");
       return;
     }
 
     setLoading(true);
-    try {
-      const response = await fetch(aiImage);
-      const garmentBlob = await response.blob();
-      const data = await predictTryOn(file, garmentBlob, aiDescription, aiCategory, user.id);
-      
-      const imageUrl = typeof data === 'string' ? data : data.output;
-      const newCredits = typeof data === 'object' ? data.remainingCredits : null;
+    setProgress(10);
+    setStatusMessage("Enviando a Musa Engine...");
 
-      setResult(imageUrl);
-      if (newCredits !== null && newCredits !== undefined) auth?.updateCredits(newCredits);
+    let pollingInterval: ReturnType<typeof setInterval>;
+
+    try {
+      // 1. Obtener el blob de la prenda (la imagen de Villatech/Musa)
+      const garmentResponse = await fetch(aiImage);
+      const garmentBlob = await garmentResponse.blob();
+
+      // 2. Iniciar el Job en el Backend (BullMQ)
+      const { jobId, remainingCredits } = await startTryOnJob(
+        file, 
+        garmentBlob, 
+        aiDescription, 
+        aiCategory, 
+        user.id
+      );
+
+      // Actualizar créditos en la UI inmediatamente
+      if (remainingCredits !== undefined) auth?.updateCredits(remainingCredits);
       
-      setProgress(100);
-      setStatusMessage("Simulación completada");
+      setStatusMessage("En cola de procesamiento...");
+      setProgress(25);
+
+      // 3. Iniciar Polling (Preguntar cada 3 segundos)
+      pollingInterval = setInterval(async () => {
+        try {
+          const status = await checkJobStatus(jobId);
+
+          if (status.state === 'completed' && status.result) {
+            clearInterval(pollingInterval);
+            setResult(status.result.imageUrl);
+            setProgress(100);
+            setStatusMessage("Simulación completada");
+            setLoading(false);
+            toast.success("¡Imagen generada con éxito!");
+          } 
+          else if (status.state === 'failed') {
+            clearInterval(pollingInterval);
+            throw new Error(status.error || "La IA falló al procesar.");
+          } 
+          else if (status.state === 'active') {
+            setStatusMessage("Musa AI está renderizando...");
+            setProgress((prev) => (prev < 90 ? prev + 5 : prev));
+          }
+          // Si está en 'waiting', simplemente esperamos al siguiente ciclo
+        } catch (pollError: any) {
+          clearInterval(pollingInterval);
+          setLoading(false);
+          toast.error(pollError.message);
+        }
+      }, 3000);
+
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Error en el motor");
       setStatusMessage("Fallo en el motor");
       setProgress(0);
-    } finally {
       setLoading(false);
     }
   };
@@ -131,18 +141,15 @@ export const ModalTryOn: React.FC<ModalProps> = ({
 
   return (
     <AnimatePresence>
-      {/* CAMBIO: items-start en móvil para permitir el scroll desde arriba */}
       <div className="fixed inset-0 z-[2000] flex items-start md:items-center justify-center bg-black/95 backdrop-blur-xl overflow-y-auto p-0 md:p-6">
         
         <motion.div 
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 50 }}
-          // CAMBIO: pt-16 en móvil para dar espacio al botón de cierre
           className="relative bg-[#0A0A0A] w-full max-w-6xl min-h-screen md:min-h-0 md:h-auto md:max-h-[95vh] md:rounded-[3rem] overflow-hidden border-x md:border border-white/10 flex flex-col md:flex-row shadow-2xl pt-16 md:pt-0"
         >
           
-          {/* CAMBIO: Ajuste de posición y tamaño para móvil */}
           <button 
             onClick={onClose} 
             className="absolute top-4 right-4 md:top-6 md:right-6 z-[100] w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/10 rounded-full transition-all backdrop-blur-md active:scale-90"
@@ -150,7 +157,7 @@ export const ModalTryOn: React.FC<ModalProps> = ({
             <i className="fas fa-times text-white text-lg md:text-xl"></i>
           </button>
 
-          {/* --- PANEL VISUALIZADOR (Primero en mobile) --- */}
+          {/* --- PANEL VISUALIZADOR --- */}
           <div className="w-full md:w-[60%] bg-[#080808] relative flex items-center justify-center p-6 sm:p-10 md:p-20 order-1 md:order-2 min-h-[450px] md:min-h-0">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-pink-500/10 via-transparent to-transparent opacity-60"></div>
 
@@ -162,8 +169,6 @@ export const ModalTryOn: React.FC<ModalProps> = ({
                         className="relative w-full h-full cursor-col-resize group"
                         onMouseMove={handleMove}
                         onTouchMove={handleMove}
-                        onMouseDown={() => setIsResizing(true)}
-                        onMouseUp={() => setIsResizing(false)}
                     >
                         <img src={result} alt="Musa AI" className="absolute inset-0 w-full h-full object-cover" />
                         
@@ -191,7 +196,7 @@ export const ModalTryOn: React.FC<ModalProps> = ({
             </div>
           </div>
 
-          {/* --- PANEL CONTROLES (Abajo en mobile) --- */}
+          {/* --- PANEL CONTROLES --- */}
           <div className="w-full md:w-[40%] p-8 sm:p-12 md:p-16 flex flex-col justify-center bg-[#111] border-t md:border-t-0 md:border-r border-white/5 order-2 md:order-1">
             <div className="mb-10 text-center md:text-left">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 mb-6">
@@ -234,10 +239,10 @@ export const ModalTryOn: React.FC<ModalProps> = ({
                 ) : (
                   <button 
                     onClick={handleProcess} 
-                    disabled={!file} 
+                    disabled={!file || (user?.credits || 0) <= 0} 
                     className="w-full bg-white text-black py-5 md:py-6 rounded-2xl font-black text-[11px] uppercase tracking-[0.3em] hover:bg-pink-500 hover:text-white disabled:opacity-20 transition-all active:scale-95 shadow-xl"
                   >
-                    Procesar Simulación
+                    { (user?.credits || 0) <= 0 ? "Sin Créditos" : "Procesar Simulación" }
                   </button>
                 )}
               </div>

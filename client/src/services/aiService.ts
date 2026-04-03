@@ -1,42 +1,42 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Definimos una interfaz para la respuesta para que TypeScript no se queje en el Modal
-interface TryOnResponse {
-  image: string;
-  output: string;
-  remainingCredits: number; // Nombre unificado con tu AuthContext
+// Interfaces profesionales para TypeScript
+export interface StartJobResponse {
+  jobId: string;
+  remainingCredits: number;
+}
+
+export interface JobStatusResponse {
+  state: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed';
+  progress: number;
+  result?: { imageUrl: string }; // La URL de la imagen cuando termine
+  error?: string;
 }
 
 /**
- * Servicio de Inteligencia Artificial - Musa AI
- * Conecta el Frontend con el motor de Replicate a través del Backend blindado.
+ * 1. INICIAR EL PROCESO (Start Job)
+ * Envía las imágenes a la cola de BullMQ en el servidor.
  */
-export const predictTryOn = async (
+export const startTryOnJob = async (
   personFile: File, 
   garmentBlob: Blob,
   garmentDescription: string,
   category: string,
   userId: string 
-): Promise<TryOnResponse> => { // Ahora retorna el objeto completo
+): Promise<StartJobResponse> => {
   try {
-    // 1. Validación de Entrada
     if (!garmentDescription.trim() || !category) {
       throw new Error("Por favor, completa la descripción y categoría de la prenda.");
     }
 
-    // 2. Recuperación del Token
     const token = localStorage.getItem('token'); 
-    if (!token) {
-      throw new Error("SESION_INVALIDA"); 
-    }
+    if (!token) throw new Error("SESION_INVALIDA"); 
 
-    // 3. Conversión de imágenes a Data URIs
     const [personUri, garmentUri] = await Promise.all([
       fileToDataUri(personFile),
       blobToDataUri(garmentBlob)
     ]);
 
-    // 4. Llamada al servidor
     const response = await fetch(`${API_URL}/api/try-on`, {
       method: 'POST',
       headers: {
@@ -52,45 +52,55 @@ export const predictTryOn = async (
       }),
     });
 
-    // 5. Manejo de Errores
     if (!response.ok) {
-      let errorMsg = "Error inesperado en Musa Engine.";
-      
       const errorData = await response.json().catch(() => ({}));
-      
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('token');
-        localStorage.removeItem('user');
         throw new Error("Su sesión ha expirado. Por favor, ingrese de nuevo.");
       }
-
-      // Si el backend envía un error de créditos, lo capturamos aquí
-      errorMsg = errorData.error || errorMsg;
-      throw new Error(errorMsg);
+      throw new Error(errorData.error || "Error inesperado al iniciar Musa Engine.");
     }
 
-    // 6. Procesamiento de Resultado
+    // El backend ahora debe devolver { jobId, remainingCredits }
     const data = await response.json();
-    
-    // Retornamos el objeto tal cual lo necesita el ModalTryOn
     return {
-      image: data.image,
-      output: data.image, // Mantenemos output por compatibilidad con el modal anterior
-      remainingCredits: data.creditsLeft || data.remainingCredits 
+      jobId: data.jobId,
+      remainingCredits: data.remainingCredits || data.creditsLeft
     };
 
   } catch (error: any) {
     if (error.message === "SESION_INVALIDA") {
       throw new Error("Debes iniciar sesión para usar Musa AI.");
     }
-    
-    console.error("❌ Error en el Servicio Musa:", error.message);
+    console.error("❌ Error iniciando Musa Engine:", error.message);
     throw error;
   }
 };
 
 /**
- * Utilidades de Conversión
+ * 2. CONSULTAR ESTADO (Check Status)
+ * Pregunta al servidor en qué estado se encuentra el Job (waiting, active, completed, failed).
+ */
+export const checkJobStatus = async (jobId: string): Promise<JobStatusResponse> => {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error("Sesión inválida al consultar estado.");
+
+  const response = await fetch(`${API_URL}/api/try-on/status/${jobId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo verificar el estado del procesamiento.");
+  }
+
+  return await response.json();
+};
+
+/**
+ * Utilidades de Conversión (Intactas)
  */
 const fileToDataUri = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
