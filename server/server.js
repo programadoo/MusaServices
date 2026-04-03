@@ -2,10 +2,11 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import compression from 'compression'; // Mejora de rendimiento
+import compression from 'compression'; 
 import mongoose from 'mongoose';
 import connectDB from './config/db.js';
-import './workers/aiWorker.js'; // Solo importarlo para que se ejecute
+import { apiLimiter, authLimiter } from './middlewares/rateLimiter.js'; 
+import './workers/aiWorker.js'; 
 
 // --- 🛣️ IMPORTACIÓN DE RUTAS ---
 import authRoutes from './routes/authRoutes.js';
@@ -14,20 +15,27 @@ import paymentRoutes from './routes/paymentRoutes.js';
 
 const app = express();
 
-// --- 🛡️ MIDDLEWARES DE SEGURIDAD Y RENDIMIENTO ---
-app.use(helmet());      // Protege cabeceras HTTP
-app.use(compression()); // Comprime respuestas para mayor velocidad
+// --- 🗄️ CONEXIÓN A BASE DE DATOS ---
+connectDB();
 
-// Configuración de CORS Profesional (Villatech Standard)
+// --- 🛡️ MIDDLEWARES DE SEGURIDAD Y RENDIMIENTO ---
+app.use(helmet());      // Protege cabeceras contra ataques comunes
+app.use(compression()); // Comprime payloads (vital para imágenes en Base64)
+
+// Configuración de CORS con normalización de URLs
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
-  process.env.FRONTEND_URL 
+  process.env.FRONTEND_URL?.replace(/\/$/, "") // Elimina barra final si existe
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Permitir peticiones sin origen (como Postman o Server-to-Server) 
+    // y validar orígenes permitidos normalizando la barra final
+    const normalizedOrigin = origin ? origin.replace(/\/$/, "") : null;
+    
+    if (!origin || allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
       callback(new Error('🚫 Bloqueado por políticas de seguridad de Villatech (CORS)'));
@@ -38,47 +46,63 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-nowpayments-sig']
 }));
 
-// Límite de carga para procesar imágenes en Base64 sin caídas
+// Límite de carga para procesar imágenes en Base64
 app.use(express.json({ limit: '15mb' }));
 
-// --- 🗄️ CONEXIÓN A BASE DE DATOS ---
-connectDB();
+// --- 🚦 LIMITADORES DE TRÁFICO (Anti-DoS) ---
+app.use('/api/auth/login', authLimiter);    // Protege contra fuerza bruta en login
+app.use('/api/auth/register', authLimiter); // Evita spam de creación de cuentas
+app.use('/api/', apiLimiter);               // Límite general para el resto de la API
 
 // --- 🚀 ENRUTADOR PRINCIPAL ---
-// Centralizamos todas las rutas bajo prefijos lógicos
-app.use('/api/auth', authRoutes);      // Registro, Login, Perfil
-app.use('/api/try-on', tryOnRoutes);   // Generación IA, Historial, Borrado
-app.use('/api/credits', paymentRoutes); // Pagos y Webhooks de NowPayments
+app.use('/api/auth', authRoutes);
+app.use('/api/try-on', tryOnRoutes);
+app.use('/api/credits', paymentRoutes);
 
-// --- 🟢 HEALTH CHECK ---
-// Ruta raíz para que Render/Railway sepa que el servicio está activo
+// --- 🟢 HEALTH CHECK (Para Render/UptimeRobot) ---
 app.get('/', (req, res) => {
   res.status(200).json({ 
     status: "online", 
     service: "Musa AI API", 
     owner: "Villatech",
-    version: "1.1.0" 
+    version: "1.1.0",
+    timestamp: new Date().toISOString()
   });
 });
 
 // --- ❌ MANEJO DE RUTAS NO ENCONTRADAS ---
 app.use((req, res) => {
-  res.status(404).json({ error: "Ruta no encontrada en el servidor de Musa." });
+  res.status(404).json({ error: "La ruta solicitada no existe en el motor de Musa." });
+});
+
+// --- 🚨 MANEJO GLOBAL DE ERRORES ---
+// Evita que el servidor se caiga y oculta detalles técnicos al cliente
+app.use((err, req, res, next) => {
+  console.error(`[SYSTEM_ERROR] [${new Date().toISOString()}]:`, err.stack);
+
+  if (err.message === '🚫 Bloqueado por políticas de seguridad de Villatech (CORS)') {
+    return res.status(403).json({ error: err.message });
+  }
+
+  res.status(err.status || 500).json({
+    error: "Error interno en el servidor de Musa AI.",
+    code: "INTERNAL_SERVER_ERROR"
+  });
 });
 
 // --- 🏁 INICIO DEL SERVIDOR ---
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
-  console.log(`🚀 MUSA AI MODULAR - Operando en puerto ${PORT}`);
+  console.log(`🚀 MUSA ENGINE OPERACIONAL - Puerto: ${PORT}`);
+  console.log(`🌍 Origen permitido: ${process.env.FRONTEND_URL}`);
 });
 
-// --- 🛑 GRACEFUL SHUTDOWN ---
-// Asegura que no queden conexiones colgadas al reiniciar o apagar el servidor
+// --- 🛑 CIERRE CONTROLADO (Graceful Shutdown) ---
 process.on('SIGTERM', () => {
-  console.log('🛑 Señal SIGTERM recibida. Cerrando conexiones...');
+  console.log('🛑 Señal SIGTERM recibida. Finalizando procesos de Musa...');
   server.close(() => {
     mongoose.connection.close(false, () => {
-      console.log('📡 Conexión a MongoDB cerrada exitosamente.');
+      console.log('📡 Conexiones de base de datos cerradas. Apagado seguro.');
       process.exit(0);
     });
   });

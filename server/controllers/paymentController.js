@@ -70,7 +70,7 @@ export const createPayment = async (req, res) => {
 
 /**
  * Procesa notificaciones IPN (Instant Payment Notification).
- * Implementa validación HMAC para asegurar que el origen sea NowPayments.
+ * Implementa validación HMAC de tiempo constante para máxima seguridad.
  */
 export const nowPaymentsWebhook = async (req, res) => {
   try {
@@ -83,8 +83,13 @@ export const nowPaymentsWebhook = async (req, res) => {
     hmac.update(sortedBody);
     const checkSignature = hmac.digest('hex');
 
-    if (signature !== checkSignature) {
-      console.error("🚨 [ALERTA DE SEGURIDAD] Firma IPN inválida detectada.");
+    // CONVERSIÓN A BUFFERS PARA COMPARACIÓN SEGURA (Timing Attack Prevention)
+    const signatureBuffer = Buffer.from(signature || '', 'utf8');
+    const checkSignatureBuffer = Buffer.from(checkSignature, 'utf8');
+
+    // Verificación de longitud y de contenido en tiempo constante
+    if (signatureBuffer.length !== checkSignatureBuffer.length || !crypto.timingSafeEqual(signatureBuffer, checkSignatureBuffer)) {
+      console.error("🚨 [ALERTA DE SEGURIDAD] Firma IPN inválida detectada. Posible intento de falsificación de Webhook.");
       return res.status(401).send('Unauthorized Signature');
     }
 
@@ -124,14 +129,14 @@ export const nowPaymentsWebhook = async (req, res) => {
       case 'partially_paid':
         paymentRecord.status = 'partially_paid';
         await paymentRecord.save();
-        // Aquí podrías enviar un correo automático al usuario vía Villatech Support
+        // Lógica futura: Integración con Resend para notificar al usuario
         break;
 
       default:
         console.log(`ℹ️ Pago ${payment_id} en estado: ${payment_status}`);
     }
 
-    // NowPayments requiere un 200 OK para dejar de reintentar el webhook
+    // NowPayments requiere un 200 OK estricto para cerrar el ciclo del webhook
     res.status(200).send('OK');
 
   } catch (error) {
