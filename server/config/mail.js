@@ -8,6 +8,7 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false, // false para puerto 587 (usa STARTTLS)
+  family: 4,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS  // DEBE SER LA CONTRASEÑA DE APLICACIÓN DE 16 LETRAS
