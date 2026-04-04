@@ -19,22 +19,18 @@ const app = express();
 connectDB();
 
 // --- 🛡️ MIDDLEWARES DE SEGURIDAD Y RENDIMIENTO ---
-app.use(helmet());      // Protege cabeceras contra ataques comunes
-app.use(compression()); // Comprime payloads (vital para imágenes en Base64)
+app.use(helmet());      
+app.use(compression()); 
 
-// Configuración de CORS con normalización de URLs
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3001',
-  process.env.FRONTEND_URL?.replace(/\/$/, "") // Elimina barra final si existe
+  process.env.FRONTEND_URL?.replace(/\/$/, "")
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir peticiones sin origen (como Postman o Server-to-Server) 
-    // y validar orígenes permitidos normalizando la barra final
     const normalizedOrigin = origin ? origin.replace(/\/$/, "") : null;
-    
     if (!origin || allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
@@ -46,20 +42,19 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-nowpayments-sig']
 }));
 
-// Límite de carga para procesar imágenes en Base64
 app.use(express.json({ limit: '15mb' }));
 
-// --- 🚦 LIMITADORES DE TRÁFICO (Anti-DoS) ---
-app.use('/api/auth/login', authLimiter);    // Protege contra fuerza bruta en login
-app.use('/api/auth/register', authLimiter); // Evita spam de creación de cuentas
-app.use('/api/', apiLimiter);               // Límite general para el resto de la API
+// --- 🚦 LIMITADORES DE TRÁFICO ---
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/', apiLimiter);
 
 // --- 🚀 ENRUTADOR PRINCIPAL ---
 app.use('/api/auth', authRoutes);
 app.use('/api/try-on', tryOnRoutes);
 app.use('/api/credits', paymentRoutes);
 
-// --- 🟢 HEALTH CHECK (Para Render/UptimeRobot) ---
+// --- 🟢 HEALTH CHECK ---
 app.get('/', (req, res) => {
   res.status(200).json({ 
     status: "online", 
@@ -70,20 +65,15 @@ app.get('/', (req, res) => {
   });
 });
 
-// --- ❌ MANEJO DE RUTAS NO ENCONTRADAS ---
 app.use((req, res) => {
   res.status(404).json({ error: "La ruta solicitada no existe en el motor de Musa." });
 });
 
-// --- 🚨 MANEJO GLOBAL DE ERRORES ---
-// Evita que el servidor se caiga y oculta detalles técnicos al cliente
 app.use((err, req, res, next) => {
   console.error(`[SYSTEM_ERROR] [${new Date().toISOString()}]:`, err.stack);
-
   if (err.message === '🚫 Bloqueado por políticas de seguridad de Villatech (CORS)') {
     return res.status(403).json({ error: err.message });
   }
-
   res.status(err.status || 500).json({
     error: "Error interno en el servidor de Musa AI.",
     code: "INTERNAL_SERVER_ERROR"
@@ -94,19 +84,29 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 const server = app.listen(PORT, () => {
   console.log(`🚀 MUSA ENGINE OPERACIONAL - Puerto: ${PORT}`);
-  console.log(`🌍 Origen permitido: ${process.env.FRONTEND_URL}`);
 });
 
 // --- 🛑 CIERRE CONTROLADO (Graceful Shutdown) ---
-// Manejo de cierre limpio para Musa AI
-process.on('SIGTERM', async () => {
-  console.log('🔴 Señal SIGTERM recibida. Finalizando procesos de Musa...');
-  try {
-    await mongoose.connection.close(); // Ahora es una promesa, sin callback
-    console.log('✅ Conexión a MongoDB cerrada.');
-    process.exit(0);
-  } catch (err) {
-    console.error('❌ Error al cerrar MongoDB:', err);
-    process.exit(1);
-  }
-});
+// Función unificada para cerrar todo correctamente
+const gracefulShutdown = async (signal) => {
+  console.log(`\n🔴 Señal ${signal} recibida. Finalizando Musa Engine...`);
+  
+  // 1. Cerramos el servidor de Express (deja de aceptar peticiones)
+  server.close(async () => {
+    console.log('📡 Servidor HTTP cerrado.');
+    
+    try {
+      // 2. Cerramos la conexión a la base de datos (Sin callbacks)
+      await mongoose.connection.close();
+      console.log('✅ Conexión a MongoDB finalizada correctamente.');
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ Error al cerrar los servicios:', err);
+      process.exit(1);
+    }
+  });
+};
+
+// Escuchamos SIGTERM (Render) y SIGINT (Ctrl+C en local)
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
