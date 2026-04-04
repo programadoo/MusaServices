@@ -98,12 +98,15 @@ const server = app.listen(PORT, () => {
 });
 
 // --- 🛑 CIERRE CONTROLADO (Graceful Shutdown) ---
-process.on('SIGTERM', () => {
-  console.log('🛑 Señal SIGTERM recibida. Finalizando procesos de Musa...');
-  server.close(() => {
-    mongoose.connection.close(false, () => {
-      console.log('📡 Conexiones de base de datos cerradas. Apagado seguro.');
-      process.exit(0);
-    });
-  });
+// Manejo de cierre limpio para Musa AI
+process.on('SIGTERM', async () => {
+  console.log('🔴 Señal SIGTERM recibida. Finalizando procesos de Musa...');
+  try {
+    await mongoose.connection.close(); // Ahora es una promesa, sin callback
+    console.log('✅ Conexión a MongoDB cerrada.');
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ Error al cerrar MongoDB:', err);
+    process.exit(1);
+  }
 });
