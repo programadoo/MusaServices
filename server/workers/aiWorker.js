@@ -1,32 +1,29 @@
 import { Worker } from 'bullmq';
-import { Redis } from 'ioredis'; // Importamos Redis para manejar la URL de Render
+import { Redis } from 'ioredis';
 import { replicate, supabase } from '../config/services.js';
 import Generation from '../models/Generation.js';
 import User from '../models/User.js';
 import axios from 'axios';
 
-// --- CONFIGURACIÓN DE CONEXIÓN ROBUSTA ---
-const redisUrl = process.env.REDIS_URL;
+/**
+ * CONFIGURACIÓN DE CONEXIÓN - MUSA ENGINE
+ * Unificado para evitar errores de ETIMEDOUT en la red interna de Render.
+ */
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
-const connection = redisUrl 
-  ? new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      // Mantenemos la lógica sin TLS que probamos en redis.js para la red interna
-      connectTimeout: 10000, 
-    })
-  : new Redis({
-      host: '127.0.0.1',
-      port: 6379,
-      maxRetriesPerRequest: null
-    });
+const connection = new Redis(redisUrl, {
+    maxRetriesPerRequest: null, // Requerido por BullMQ
+    connectTimeout: 10000,       // 10 segundos de margen
+    // NOTA: Sin objeto 'tls' para evitar el bloqueo del TLSSocket en Render.
+});
 
 const aiWorker = new Worker('ai-tasks', async (job) => {
     const { personUri, garmentUri, garmentDescription, category, userId } = job.data;
 
     try {
-        console.log(`🎨 [WORKER]: Iniciando Try-On para usuario ${userId} (Job: ${job.id})`);
+        console.log(`🎨 [WORKER]: Procesando Try-On para usuario: ${userId} (Job: ${job.id})`);
 
-        // 1. Replicate (AI Inference)
+        // 1. Inferencia con Replicate
         const prediction = await replicate.predictions.create({
             version: "0513734a452173b8173e907e3a59d19a36266e55b48528559432bd21c7d7e985",
             input: { 
@@ -41,7 +38,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
         const result = await replicate.wait(prediction);
         const replicateUrl = Array.isArray(result.output) ? result.output[0] : result.output;
 
-        // 2. Procesamiento de imagen (Axios + Supabase)
+        // 2. Procesamiento de imagen y almacenamiento en Supabase
         const imgRes = await axios.get(replicateUrl, { responseType: 'arraybuffer' });
         const fileName = `musa_${userId}_${Date.now()}.png`;
         
@@ -49,13 +46,13 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
             .from('musa-designs')
             .upload(fileName, Buffer.from(imgRes.data), { contentType: 'image/png' });
 
-        if (uploadError) throw new Error(`Error Supabase: ${uploadError.message}`);
+        if (uploadError) throw new Error(`Error en Supabase: ${uploadError.message}`);
 
         const { data: { publicUrl } } = supabase.storage
             .from('musa-designs')
             .getPublicUrl(fileName);
 
-        // 3. Persistencia en MongoDB
+        // 3. Persistencia en base de datos (MongoDB)
         const newGen = new Generation({ 
             userId, 
             personImage: personUri, 
@@ -66,21 +63,23 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
         });
         await newGen.save();
 
-        console.log(`✅ [WORKER]: Generación completada con éxito para Job ${job.id}`);
+        console.log(`✅ [WORKER]: Generación exitosa para Job ${job.id}`);
         return { imageUrl: publicUrl };
 
     } catch (error) {
         console.error(`❌ [WORKER_ERROR] (Job ${job.id}):`, error.message);
         
-        // Reembolso de créditos en caso de fallo crítico
-        await User.findByIdAndUpdate(userId, { $inc: { credits: 1 } });
+        // Reembolso preventivo de créditos en caso de fallo técnico
+        if (userId) {
+            await User.findByIdAndUpdate(userId, { $inc: { credits: 1 } });
+        }
         throw error; 
     }
 }, { connection });
 
-// Manejadores de eventos globales del Worker para debug en Render
-aiWorker.on('active', (job) => console.log(`🚀 Job ${job.id} ha comenzado`));
-aiWorker.on('completed', (job) => console.log(`✨ Job ${job.id} finalizado`));
-aiWorker.on('error', (err) => console.error('🔥 Error crítico en el Worker:', err.message));
+// --- MONITOREO DE EVENTOS ---
+aiWorker.on('active', (job) => console.log(`🚀 [WORKER]: Iniciando Job ${job.id}`));
+aiWorker.on('completed', (job) => console.log(`✨ [WORKER]: Job ${job.id} finalizado con éxito`));
+aiWorker.on('error', (err) => console.error('🔥 [WORKER_FATAL]: Error en la instancia del Worker:', err.message));
 
 export default aiWorker;

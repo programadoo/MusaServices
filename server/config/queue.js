@@ -1,28 +1,44 @@
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 
-const redisUrl = process.env.REDIS_URL;
+/**
+ * CONFIGURACIÓN DE COLA BULLMQ - MUSA AI
+ * Sincronizado para conexión interna en Render (Sin TLS).
+ */
 
-// Creamos la conexión de forma explícita para evitar que BullMQ use el default
-const connection = redisUrl 
-  ? new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      // Esto es clave para Render:
-      tls: redisUrl.includes('red-') ? { rejectUnauthorized: false } : undefined 
-    })
-  : new Redis({
-      host: '127.0.0.1',
-      port: 6379,
-      maxRetriesPerRequest: null
-    });
+const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 
-export const aiQueue = new Queue('ai-tasks', { connection });
+// Creamos la conexión de forma explícita
+const connection = new Redis(redisUrl, {
+    // REQUERIDO: BullMQ necesita gestionar sus propios reintentos
+    maxRetriesPerRequest: null,
+    // Margen de 10 segundos para evitar el ETIMEDOUT
+    connectTimeout: 10000,
+    // NOTA: Se eliminó el bloque TLS para evitar conflictos en la red de Render
+});
 
-console.log("🔍 Diagnóstico de Redis:");
-console.log("- Fuente:", redisUrl ? "Variable REDIS_URL detectada" : "Usando Localhost");
-if (redisUrl) console.log("- URL Parcial:", redisUrl.substring(0, 15) + "...");
+// Inicializamos la cola de tareas para la IA
+export const aiQueue = new Queue('ai-tasks', { 
+    connection,
+    defaultJobOptions: {
+        attempts: 3, // Reintenta 3 veces si la IA falla
+        backoff: {
+            type: 'exponential',
+            delay: 1000,
+        },
+        removeOnComplete: true, // Limpia Redis al terminar para ahorrar espacio
+    }
+});
 
-connection.on('connect', () => console.log('✅ ioredis: Conexión establecida con éxito.'));
-connection.on('error', (err) => console.error('❌ ioredis: Error de conexión:', err.message));
+// --- DIAGNÓSTICOS DE LA COLA ---
+console.log("🔍 [QUEUE_CHECK]: Diagnóstico de conexión...");
 
-console.log('📦 Cola BullMQ inicializada en Musa AI');
+connection.on('connect', () => {
+    console.log('✅ [BULLMQ]: Conexión establecida con éxito en la cola.');
+});
+
+connection.on('error', (err) => {
+    console.error('❌ [BULLMQ_ERROR]: Fallo en la conexión de la cola:', err.message);
+});
+
+console.log('📦 [SYSTEM]: Cola "ai-tasks" inicializada en Musa AI');
