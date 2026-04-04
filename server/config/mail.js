@@ -1,20 +1,25 @@
 import nodemailer from 'nodemailer';
 
 /**
- * CONFIGURACIÓN DE TRANSPORTE - VILLATECH STANDARD
- * Utilizamos Nodemailer para bypass de costos de dominio iniciales.
- * Requiere EMAIL_USER y EMAIL_PASS (App Password) en el .env
+ * CONFIGURACIÓN DE TRANSPORTE - VILLATECH STANDARD (PRODUCCIÓN RENDER)
+ * Ajustado para evitar errores de red IPv6 y bloqueos de TLS.
  */
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Puedes cambiarlo por 'outlook', 'hotmail', etc.
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // true para puerto 465
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS  // Contraseña de aplicación de 16 caracteres
+    pass: process.env.EMAIL_PASS  // Tu contraseña de aplicación de 16 caracteres
+  },
+  tls: {
+    // Esto evita errores de certificado y problemas de conexión en servidores cloud
+    rejectUnauthorized: false
   }
 });
 
 export const MAIL_CONFIG = {
-  // El 'from' debe ser el mismo correo autenticado para evitar bloqueos de Gmail
+  // El 'from' debe ser el mismo correo autenticado para evitar bloqueos
   from: `"Musa AI Lab" <${process.env.EMAIL_USER}>`, 
   
   // URL del backend para los enlaces de verificación
@@ -24,12 +29,13 @@ export const MAIL_CONFIG = {
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173'
 };
 
-// Verificación de conexión en el arranque (Opcional pero recomendado para Debug)
+// Verificación de conexión en el arranque
 transporter.verify((error, success) => {
   if (error) {
     console.error('🚨 [MAIL_CONFIG_ERROR]: Error de conexión SMTP:', error.message);
+    console.log('💡 Tip: Revisa que EMAIL_USER y EMAIL_PASS estén correctos en Render Environment.');
   } else {
-    console.log('📧 [MAIL_SYSTEM]: Servidor de correos listo para despegar.');
+    console.log('📧 [MAIL_SYSTEM]: Servidor de correos listo para despegar (Producción).');
   }
 });
 
