@@ -1,27 +1,34 @@
 import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
-import redisClient from '../config/redis.js'; // Asegúrate de haber creado este archivo
+import redisClient from '../config/redis.js';
+
+/**
+ * CONFIGURACIÓN DE RATE LIMITERS - MUSA ENGINE
+ * Implementación profesional con ioredis para persistencia distribuida.
+ */
 
 // --- 1. LÍMITE GENERAL PARA LA API ---
-// Útil para evitar scraping o saturación del servidor
 export const apiLimiter = rateLimit({
   store: new RedisStore({
-    sendCommand: (...args) => redisClient.sendCommand(args),
-    prefix: 'musa_api:', // Prefijo para identificar estas keys en Redis
+    // ioredis usa .call() para ejecutar comandos directos de Redis
+    sendCommand: (...args) => redisClient.call(...args),
+    prefix: 'musa_api:',
   }),
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100, 
-  message: { error: "Demasiadas peticiones. Intenta de nuevo en 15 minutos." },
+  message: { 
+    error: "Demasiadas peticiones. Intenta de nuevo en 15 minutos." 
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // --- 2. LÍMITE ESTRICTO PARA AUTH ---
-// Prevención de fuerza bruta con persistencia en Redis
 export const authLimiter = rateLimit({
   store: new RedisStore({
-    sendCommand: (...args) => redisClient.sendCommand(args),
-    prefix: 'musa_auth:', // Prefijo diferente para no mezclar contadores
+    // Usamos el mismo puente .call() para la persistencia en el login
+    sendCommand: (...args) => redisClient.call(...args),
+    prefix: 'musa_auth:',
   }),
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 20, 
