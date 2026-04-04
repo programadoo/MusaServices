@@ -1,21 +1,20 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
-// Interfaces profesionales para TypeScript
+// 1. Mejoramos la interfaz para que TypeScript no dé problemas en el Modal
+export interface JobStatusResponse {
+  state: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed';
+  progress: number;
+  result?: string | { imageUrl: string }; // Soportamos ambos formatos por seguridad
+  error?: string;
+}
+
 export interface StartJobResponse {
   jobId: string;
   remainingCredits: number;
 }
 
-export interface JobStatusResponse {
-  state: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed';
-  progress: number;
-  result?: { imageUrl: string }; // La URL de la imagen cuando termine
-  error?: string;
-}
-
 /**
  * 1. INICIAR EL PROCESO (Start Job)
- * Envía las imágenes a la cola de BullMQ en el servidor.
  */
 export const startTryOnJob = async (
   personFile: File, 
@@ -56,12 +55,11 @@ export const startTryOnJob = async (
       const errorData = await response.json().catch(() => ({}));
       if (response.status === 401 || response.status === 403) {
         localStorage.removeItem('token');
-        throw new Error("Su sesión ha expirado. Por favor, ingrese de nuevo.");
+        throw new Error("Su sesión ha expirado.");
       }
-      throw new Error(errorData.error || "Error inesperado al iniciar Musa Engine.");
+      throw new Error(errorData.error || "Error al iniciar Musa Engine.");
     }
 
-    // El backend ahora debe devolver { jobId, remainingCredits }
     const data = await response.json();
     return {
       jobId: data.jobId,
@@ -69,38 +67,47 @@ export const startTryOnJob = async (
     };
 
   } catch (error: any) {
-    if (error.message === "SESION_INVALIDA") {
-      throw new Error("Debes iniciar sesión para usar Musa AI.");
-    }
-    console.error("❌ Error iniciando Musa Engine:", error.message);
+    console.error("❌ Error en startTryOnJob:", error.message);
     throw error;
   }
 };
 
 /**
  * 2. CONSULTAR ESTADO (Check Status)
- * Pregunta al servidor en qué estado se encuentra el Job (waiting, active, completed, failed).
+ * Corregido para manejar IDs especiales de BullMQ (4:1)
  */
 export const checkJobStatus = async (jobId: string): Promise<JobStatusResponse> => {
   const token = localStorage.getItem('token');
-  if (!token) throw new Error("Sesión inválida al consultar estado.");
+  
+  if (!token) {
+    const err: any = new Error("Sesión inválida.");
+    err.response = { status: 401 };
+    throw err;
+  }
 
-  const response = await fetch(`${API_URL}/api/try-on/status/${jobId}`, {
+  // CRÍTICO: Usamos encodeURIComponent para que el ":" del ID no rompa la URL
+  const safeJobId = encodeURIComponent(jobId);
+
+  const response = await fetch(`${API_URL}/api/try-on/status/${safeJobId}`, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     }
   });
 
   if (!response.ok) {
-    throw new Error("No se pudo verificar el estado del procesamiento.");
+    const errorData = await response.json().catch(() => ({}));
+    const err: any = new Error(errorData.error || "Error al verificar estado.");
+    err.response = { status: response.status }; 
+    throw err;
   }
 
   return await response.json();
 };
 
 /**
- * Utilidades de Conversión (Intactas)
+ * Utilidades de Conversión
  */
 const fileToDataUri = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {

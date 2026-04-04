@@ -151,7 +151,7 @@ const Login = () => {
             ¿Sin acceso? <Link to="/register" className="text-white hover:text-pink-500 ml-2 font-black transition-colors underline underline-offset-8">Solicitar Registro</Link>
           </p>
           {/* OPCIONAL: Link de recuperar contraseña */}
-          <Link to="/forgot-password" size="sm" className="text-[8px] font-black text-gray-700 hover:text-white uppercase tracking-widest transition-colors">
+          <Link to="/forgot-password" className="text-[8px] font-black text-gray-700 hover:text-white uppercase tracking-widest transition-colors">
             Recuperar Llave de Acceso
           </Link>
         </div>

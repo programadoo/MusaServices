@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-// Importamos las nuevas funciones del servicio actualizado
+// Importamos las funciones del servicio
 import { startTryOnJob, checkJobStatus } from '../../services/aiService';
 import { AuthContext } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,15 +35,33 @@ export const ModalTryOn: React.FC<ModalProps> = ({
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState("Esperando archivo...");
   
+  // --- REFERENCIA PARA POLLING SEGURO ---
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
   // --- ESTADOS DEL COMPARADOR VISUAL ---
   const [sliderPos, setSliderPos] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Bloqueo de scroll al abrir modal
+  // Función para limpiar el intervalo
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  };
+
+  // Bloqueo de scroll al abrir modal y limpieza al cerrar
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "unset";
-    return () => { document.body.style.overflow = "unset"; };
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+      stopPolling(); // Detener el motor si el usuario cierra la ventana
+    }
+    return () => { 
+      document.body.style.overflow = "unset"; 
+      stopPolling();
+    };
   }, [isOpen]);
 
   // Preview de la foto cargada
@@ -64,7 +82,7 @@ export const ModalTryOn: React.FC<ModalProps> = ({
   };
 
   /**
-   * LÓGICA PRINCIPAL: PROCESAMIENTO CON POLLING
+   * LÓGICA PRINCIPAL: PROCESAMIENTO CON POLLING SEGURO
    */
   const handleProcess = async () => {
     if (!file) return;
@@ -77,14 +95,12 @@ export const ModalTryOn: React.FC<ModalProps> = ({
     setProgress(10);
     setStatusMessage("Enviando a Musa Engine...");
 
-    let pollingInterval: ReturnType<typeof setInterval>;
-
     try {
-      // 1. Obtener el blob de la prenda (la imagen de Villatech/Musa)
+      // 1. Obtener el blob de la prenda
       const garmentResponse = await fetch(aiImage);
       const garmentBlob = await garmentResponse.blob();
 
-      // 2. Iniciar el Job en el Backend (BullMQ)
+      // 2. Iniciar el Job en el Backend
       const { jobId, remainingCredits } = await startTryOnJob(
         file, 
         garmentBlob, 
@@ -99,21 +115,24 @@ export const ModalTryOn: React.FC<ModalProps> = ({
       setStatusMessage("En cola de procesamiento...");
       setProgress(25);
 
-      // 3. Iniciar Polling (Preguntar cada 3 segundos)
-      pollingInterval = setInterval(async () => {
+      // 3. Iniciar Polling usando la referencia (Preguntar cada 3 segundos)
+      pollingRef.current = setInterval(async () => {
         try {
           const status = await checkJobStatus(jobId);
 
           if (status.state === 'completed' && status.result) {
-            clearInterval(pollingInterval);
-            setResult(status.result.imageUrl);
+            stopPolling();
+            const imageUrl = typeof status.result === 'string' 
+              ? status.result 
+              : status.result.imageUrl;
+            setResult(imageUrl);
             setProgress(100);
             setStatusMessage("Simulación completada");
             setLoading(false);
             toast.success("¡Imagen generada con éxito!");
           } 
           else if (status.state === 'failed') {
-            clearInterval(pollingInterval);
+            stopPolling();
             throw new Error(status.error || "La IA falló al procesar.");
           } 
           else if (status.state === 'active') {
@@ -122,9 +141,15 @@ export const ModalTryOn: React.FC<ModalProps> = ({
           }
           // Si está en 'waiting', simplemente esperamos al siguiente ciclo
         } catch (pollError: any) {
-          clearInterval(pollingInterval);
+          stopPolling();
           setLoading(false);
-          toast.error(pollError.message);
+          console.error("Error en polling:", pollError);
+          // Si el error es de autenticación, mostramos un mensaje específico
+          if (pollError.response?.status === 401) {
+             toast.error("Tu sesión expiró o hubo un problema de seguridad.");
+          } else {
+             toast.error(pollError.message || "Error al verificar el estado.");
+          }
         }
       }, 3000);
 
@@ -134,6 +159,7 @@ export const ModalTryOn: React.FC<ModalProps> = ({
       setStatusMessage("Fallo en el motor");
       setProgress(0);
       setLoading(false);
+      stopPolling();
     }
   };
 
