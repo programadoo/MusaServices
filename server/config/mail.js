@@ -1,43 +1,44 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 
 /**
  * CONFIGURACIÓN DE TRANSPORTE - MUSA AI (VILLATECH)
- * Actualizado a Puerto 465 (SSL) para máxima velocidad y estabilidad en Render.
+ * Versión "Inmune a IPv6" para Render.
  */
+
+// Forzamos que la resolución de nombres prefiera IPv4 globalmente para este proceso
+dns.setDefaultResultOrder('ipv4first');
+
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465,         // Cambiamos a SSL directo
-  secure: true,       // Obligatorio para puerto 465
-  family: 4,          // Forzamos IPv4 (mantiene la solución al error ENETUNREACH)
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS 
-  },
-  // Aumentamos los timeouts significativamente para que Render no tire la toalla
-  connectionTimeout: 20000, // 20 segundos
-  greetingTimeout: 20000,   // 20 segundos
-  socketTimeout: 25000,     // 25 segundos
+  port: 465,
+  secure: true, 
+  // Intentamos forzar IPv4 en tres niveles diferentes:
+  family: 4, 
+  address: 'smtp.gmail.com',
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
   tls: {
-    // Evita bloqueos por certificados en la infraestructura de la nube
+    // Crucial: No permitas que la negociación TLS intente saltar a IPv6
     rejectUnauthorized: false,
+    servername: 'smtp.gmail.com',
     minVersion: 'TLSv1.2'
   }
 });
 
 export const MAIL_CONFIG = {
-  // Nota: EMAIL_USER debe ser alejandro.personal29@gmail.com
   from: `"Musa AI Lab" <${process.env.EMAIL_USER}>`, 
   baseUrl: process.env.BACKEND_URL || 'http://localhost:3001',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173'
 };
 
-// Verificación detallada para el log de Render
+// Verificación con log de éxito
 transporter.verify((error) => {
   if (error) {
-    console.error('🚨 [MAIL_CONFIG_ERROR]: Fallo definitivo en la conexión SMTP:', error.message);
-    console.log('💡 Tip de Villatech: Si dice Timeout en 465, revisa que tu App Password de 16 caracteres no tenga espacios.');
+    console.error('🚨 [MAIL_CONFIG_ERROR]: Fallo tras forzar IPv4:', error.message);
+    console.log('💡 Tip de Villatech: Si esto falla, intentaremos el último recurso (IP Directa).');
   } else {
-    console.log('📧 [MAIL_SYSTEM]: Servidor de correos conectado con éxito vía SSL (Puerto 465).');
+    console.log('📧 [MAIL_SYSTEM]: Conexión establecida con éxito (IPv4 Blindado).');
   }
 });
 
