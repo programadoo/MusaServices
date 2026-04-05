@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 // Importamos el contexto para acceder al total real del carrito
 import { EcommerceContext } from "../../context/EcommerceContext";
@@ -17,7 +17,8 @@ const PaypalButtonComponent = () => {
     intent: "capture",
   };
 
-  const createOrder = (data: any, actions: any) => {
+  // Línea 20: Cambiamos data por _data
+  const createOrder = (_data: any, actions: any) => {
     return actions.order.create({
       purchase_units: [
         {
@@ -32,7 +33,8 @@ const PaypalButtonComponent = () => {
     });
   };
 
-  const onApprove = (data: any, actions: any) => {
+  // Línea 35: Cambiamos data por _data
+  const onApprove = (_data: any, actions: any) => {
     return actions.order.capture().then(function (details: any) {
       alert("Transacción completada por: " + details.payer.name.given_name);
       // Limpiamos el carrito después de un pago exitoso
@@ -51,8 +53,9 @@ const PaypalButtonComponent = () => {
         }}
         // Para evitar errores si el total es 0, deshabilitamos el botón si no hay nada
         disabled={total <= 0}
-        createOrder={(data, actions) => createOrder(data, actions)}
-        onApprove={(data, actions) => onApprove(data, actions)}
+        // Actualizamos también las llamadas aquí para que coincidan
+        createOrder={(_data, actions) => createOrder(_data, actions)}
+        onApprove={(_data, actions) => onApprove(_data, actions)}
       />
     </PayPalScriptProvider>
   );

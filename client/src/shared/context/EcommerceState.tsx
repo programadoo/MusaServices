@@ -1,5 +1,5 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
-import { EcommerceContext, Product, CartItem } from "./ecommerceContext";
+import { EcommerceContext, Product, CartItem } from "./EcommerceContext";
 
 const EcommerceState = ({ children }: { children: ReactNode }) => {
   // 1. Catálogo Completo de VillaTech

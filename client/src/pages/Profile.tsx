@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { AuthContext } from "../shared/context/AuthContext"; 
 import UserHistory from "./UserHistory";
 import { motion } from "framer-motion";
