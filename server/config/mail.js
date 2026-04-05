@@ -1,39 +1,52 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 /**
- * CONFIGURACIÓN DE TRANSPORTE - MUSA AI (RECURSO FINAL)
- * Usamos la IP directa de Gmail para saltarnos el bloqueo de IPv6 en Render.
+ * CONFIGURACIÓN DE CORREO - MUSA AI
+ * Seguridad: Implementación vía API Key (HTTPS) para evitar bloqueos de puertos.
+ * Dominio: musa-ai.uk (Validado vía DNS)
  */
-const transporter = nodemailer.createTransport({
-  // Esta es una de las IPs oficiales de smtp.gmail.com (IPv4)
-  host: '64.233.186.108', 
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS 
-  },
-  connectionTimeout: 30000, // 30 segundos
-  greetingTimeout: 30000,
-  tls: {
-    // Es vital poner el servername aquí para que el certificado SSL de Google siga siendo válido
-    servername: 'smtp.gmail.com',
-    rejectUnauthorized: false
-  }
-});
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const MAIL_CONFIG = {
-  from: `"Musa AI Lab" <${process.env.EMAIL_USER}>`, 
+  // El remitente ahora es una dirección oficial de tu dominio
+  from: 'Musa AI <no-reply@musa-ai.uk>', 
+  // URLs de entorno para asegurar que los enlaces en los correos sean dinámicos
   baseUrl: process.env.BACKEND_URL || 'https://musaservices.onrender.com',
-  frontendUrl: process.env.FRONTEND_URL || 'https://lumen-shop.onrender.com'
+  frontendUrl: process.env.FRONTEND_URL || 'https://musa-ai.uk'
 };
 
-transporter.verify((error) => {
-  if (error) {
-    console.error('🚨 [MAIL_FATAL_ERROR]: Falló incluso con IP directa:', error.message);
-  } else {
-    console.log('📧 [MAIL_SYSTEM]: ¡CONECTADO! Saltamos el muro de IPv6 con éxito.');
-  }
-});
+/**
+ * Función robusta para el envío de correos.
+ * @param {Object} options - Destinatario, asunto y contenido HTML.
+ */
+export const sendEmail = async ({ to, subject, html }) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: MAIL_CONFIG.from,
+      to: [to],
+      subject: subject,
+      html: html,
+    });
 
-export default transporter;
+    if (error) {
+      console.error('🚨 [MAIL_ERROR]: Falló el envío a través de la API:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    console.log(`📧 [MAIL_SYSTEM]: Correo enviado con éxito a ${to}`);
+    return { success: true, data };
+  } catch (err) {
+    console.error('🚨 [MAIL_CRITICAL_FAIL]: Error inesperado en el motor de correos:', err.message);
+    return { success: false, error: err.message };
+  }
+};
+
+// Verificación inicial del motor en los logs de Render
+if (!process.env.RESEND_API_KEY) {
+  console.warn('⚠️ [MAIL_WARNING]: RESEND_API_KEY no está definida. El sistema de correos no funcionará.');
+} else {
+  console.log('🚀 [MAIL_SYSTEM]: Motor de correos musa-ai.uk listo y protegido.');
+}
+
+export default resend;
