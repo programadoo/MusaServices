@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect } from "react";
-import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom"; // Añadido useSearchParams
+import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { AuthContext } from "../shared/context/AuthContext";
 import toast from 'react-hot-toast';
@@ -11,27 +11,51 @@ const Login = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams(); // Hook para leer parámetros de URL
+  const [searchParams, setSearchParams] = useSearchParams(); 
   const auth = useContext(AuthContext);
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // --- NUEVA LÓGICA: DETECTAR VERIFICACIÓN EXITOSA ---
+  // --- LÓGICA DE NOTIFICACIONES (VERIFICACIÓN Y ERRORES) ---
   useEffect(() => {
-    if (searchParams.get('verified') === 'true') {
+    const verified = searchParams.get('verified');
+    const error = searchParams.get('error');
+
+    // Estilo base para los toasts de Musa Core
+    const toastStyle = {
+      borderRadius: '20px',
+      background: '#111',
+      color: '#fff',
+      border: '1px solid rgba(255,255,255,0.1)',
+      fontSize: '12px',
+      fontWeight: 'bold',
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.05em'
+    };
+
+    if (verified === 'true') {
       toast.success("✅ Cuenta Verificada con Éxito. Protocolo de acceso habilitado.", {
         duration: 5000,
-        style: {
-          borderRadius: '20px',
-          background: '#111',
-          color: '#fff',
-          border: '1px solid rgba(255,255,255,0.1)',
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }
+        style: toastStyle
       });
-      
-      // Limpiamos el parámetro de la URL para que no reaparezca el toast al recargar
+    }
+
+    if (error) {
+      const errorMap: Record<string, string> = {
+        token_missing: "⚠️ Error de Protocolo: Token de acceso no detectado.",
+        invalid_token: "❌ Acceso Denegado: Enlace de verificación inválido o expirado.",
+        server_error: "⚠️ Falla de Sistema: Error interno al procesar verificación."
+      };
+
+      toast.error(errorMap[error] || "❌ Error Crítico: No se pudo validar la identidad.", {
+        duration: 5000,
+        style: { ...toastStyle, border: '1px solid rgba(239, 68, 68, 0.2)' }
+      });
+    }
+
+    // Limpiamos los parámetros para que no se repita el toast
+    if (verified || error) {
       searchParams.delete('verified');
+      searchParams.delete('error');
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -65,10 +89,10 @@ const Login = () => {
         const origin = (location.state as any)?.from?.pathname || "/perfil";
         navigate(origin, { replace: true });
       } else {
-        // Manejo específico si la cuenta no está verificada (Error 403 que pusimos en el Backend)
         if (response.status === 403 && data.code === "EMAIL_NOT_VERIFIED") {
           toast.error("⚠️ Acceso Restringido: Debes verificar tu correo electrónico.", {
-            icon: '📧'
+            icon: '📧',
+            style: { borderRadius: '20px', background: '#111', color: '#fff' }
           });
         } else {
           toast.error(`❌ Acceso Denegado: ${data.error || 'Verifica tus credenciales'}`);
@@ -150,7 +174,6 @@ const Login = () => {
           <p className="text-[9px] font-black text-gray-600 uppercase tracking-widest">
             ¿Sin acceso? <Link to="/register" className="text-white hover:text-pink-500 ml-2 font-black transition-colors underline underline-offset-8">Solicitar Registro</Link>
           </p>
-          {/* OPCIONAL: Link de recuperar contraseña */}
           <Link to="/forgot-password" className="text-[8px] font-black text-gray-700 hover:text-white uppercase tracking-widest transition-colors">
             Recuperar Llave de Acceso
           </Link>

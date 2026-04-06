@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { EcommerceContext } from "../context/EcommerceContext";
 import { AuthContext } from "../context/AuthContext"; 
 import { motion, AnimatePresence } from "framer-motion";
+import imgLogo from "../assets/images/logo_proyecto.png";
 
 export const Navbar = () => {
   const context = useContext(EcommerceContext) as any;
@@ -41,7 +42,7 @@ export const Navbar = () => {
           {/* 1. LOGO */}
           <div className="flex items-center gap-4 shrink-0 group">
             <div className="w-11 h-11 bg-gradient-to-tr from-pink-600 to-purple-700 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg shadow-pink-500/20 group-hover:scale-110 transition-transform duration-500">
-              <img src="src/assets/images/logo_proyecto.png" alt="Logo" className="w-full h-full object-cover" />
+              <img src={imgLogo} alt="Logo" className="w-full h-full object-cover" />
             </div>
             <Link to="/" className="flex flex-col">
               <span className="text-xl font-black tracking-[-0.05em] uppercase text-white leading-none">LUMEN</span>

@@ -96,12 +96,13 @@ export const login = async (req, res) => {
 export const verifyEmail = async (req, res) => {
   try {
     const { token } = req.query;
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
     console.log("🔍 Intentando verificar token:", token);
 
-    if (!token) return res.status(400).json({ error: "Token ausente." });
+    if (!token) return res.redirect(`${FRONTEND_URL}/login?error=token_missing`);
 
     // CAMBIO MAESTRO: Usamos findOneAndUpdate para forzar la actualización directa en MongoDB
-    // trim() limpia espacios en blanco que algunos navegadores agregan al copiar enlaces
     const user = await User.findOneAndUpdate(
       { verificationToken: token.trim() }, 
       { 
@@ -113,23 +114,18 @@ export const verifyEmail = async (req, res) => {
 
     if (!user) {
       console.log("❌ No se encontró usuario con ese token o ya fue verificado.");
-      return res.status(400).send(`
-        <div style="font-family:sans-serif; text-align:center; margin-top:50px;">
-          <h1 style="color:#e63946;">Enlace Inválido</h1>
-          <p>El enlace ha expirado o ya has verificado tu cuenta anteriormente.</p>
-          <a href="${process.env.FRONTEND_URL}/login">Ir al Login</a>
-        </div>
-      `);
+      return res.redirect(`${FRONTEND_URL}/login?error=invalid_token`);
     }
 
     console.log(`✅ Usuario verificado con éxito: ${user.email}`);
 
     // Redirección al frontend con flag de éxito
-    res.redirect(`${process.env.FRONTEND_URL}/login?verified=true`);
+    res.redirect(`${FRONTEND_URL}/login?verified=true`);
 
   } catch (error) {
     console.error("❌ Error en verifyEmail:", error);
-    res.status(500).json({ error: "Error al verificar la cuenta." });
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${FRONTEND_URL}/login?error=server_error`);
   }
 };
 
