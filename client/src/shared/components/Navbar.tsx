@@ -4,8 +4,7 @@ import { EcommerceContext } from "../context/EcommerceContext";
 import { AuthContext } from "../context/AuthContext"; 
 import { motion, AnimatePresence } from "framer-motion";
 
-// IMPORTACIÓN CORREGIDA: Asegúrate de que el archivo en tu carpeta se llame exactamente así
-import imgLogo from "../assets/images/logo_proyecto.png";
+// SE ELIMINÓ EL IMPORT DE IMGLOGO PARA EVITAR ERRORES DE RUTA EN RENDER
 
 export const Navbar = () => {
   const context = useContext(EcommerceContext) as any;
@@ -45,9 +44,9 @@ export const Navbar = () => {
           <div className="flex items-center gap-4 shrink-0 group">
             <Link to="/" className="flex items-center gap-4">
               <div className="w-11 h-11 bg-gradient-to-tr from-pink-600 to-purple-700 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg shadow-pink-500/20 group-hover:scale-110 transition-transform duration-500">
-                {/* Fallback en caso de que la imagen no cargue */}
+                {/* Cargamos directamente desde la carpeta public */}
                 <img 
-                  src={imgLogo} 
+                  src="/logo_proyecto.png" 
                   alt="Musa Logo" 
                   className="w-full h-full object-cover"
                   onError={(e) => {
