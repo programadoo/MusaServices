@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { EcommerceContext } from "../context/EcommerceContext";
 import { AuthContext } from "../context/AuthContext"; 
 import { motion, AnimatePresence } from "framer-motion";
+
+// IMPORTACIÓN CORREGIDA: Asegúrate de que el archivo en tu carpeta se llame exactamente así
 import imgLogo from "../assets/images/logo_proyecto.png";
 
 export const Navbar = () => {
@@ -39,13 +41,23 @@ export const Navbar = () => {
       }`}>
         <div className="max-w-7xl mx-auto px-6 md:px-10 flex justify-between items-center">
           
-          {/* 1. LOGO */}
+          {/* 1. LOGO MUSA CORE */}
           <div className="flex items-center gap-4 shrink-0 group">
-            <div className="w-11 h-11 bg-gradient-to-tr from-pink-600 to-purple-700 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg shadow-pink-500/20 group-hover:scale-110 transition-transform duration-500">
-              <img src={imgLogo} alt="Logo" className="w-full h-full object-cover" />
-            </div>
-            <Link to="/" className="flex flex-col">
-              <span className="text-xl font-black tracking-[-0.05em] uppercase text-white leading-none">LUMEN</span>
+            <Link to="/" className="flex items-center gap-4">
+              <div className="w-11 h-11 bg-gradient-to-tr from-pink-600 to-purple-700 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg shadow-pink-500/20 group-hover:scale-110 transition-transform duration-500">
+                {/* Fallback en caso de que la imagen no cargue */}
+                <img 
+                  src={imgLogo} 
+                  alt="Musa Logo" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "https://via.placeholder.com/150?text=M";
+                  }}
+                />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-black tracking-[-0.05em] uppercase text-white leading-none">LUMEN</span>
+              </div>
             </Link>
           </div>
 
@@ -98,11 +110,9 @@ export const Navbar = () => {
               <button onClick={() => setIsMenuOpen(false)} className="absolute top-6 right-6 w-12 h-12 flex items-center justify-center bg-white/5 rounded-2xl text-white border border-white/10"><i className="fas fa-times text-xl"></i></button>
 
               <div className="flex flex-col h-full">
-                {/* SECCIÓN DE NAVEGACIÓN */}
                 <div className="space-y-3 mb-10">
                   <p className="text-[10px] font-black text-pink-500 uppercase tracking-[0.5em] mb-6 pl-2">Explorar</p>
                   
-                  {/* RUTA: INICIO */}
                   <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 active:scale-95 transition-all group">
                     <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center group-hover:bg-white/10 transition-colors">
                       <i className="fas fa-home text-gray-400 group-hover:text-white transition-colors"></i>
@@ -110,7 +120,6 @@ export const Navbar = () => {
                     <span className="text-2xl font-black uppercase tracking-tighter text-white group-hover:text-pink-500">Inicio</span>
                   </Link>
 
-                  {/* RUTA: COLECCIONES */}
                   <Link to="/products" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 active:scale-95 transition-all group">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center group-hover:bg-white/10 transition-colors">
@@ -121,7 +130,6 @@ export const Navbar = () => {
                     <i className="fas fa-chevron-right text-gray-600 group-hover:text-pink-500 pr-2"></i>
                   </Link>
 
-                  {/* RUTA: MUSA AI */}
                   <Link to="/musa-ai" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between p-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 rounded-2xl border border-pink-500/20 active:scale-95 transition-all group">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center">
@@ -134,7 +142,6 @@ export const Navbar = () => {
 
                 <div className="h-[1px] w-full bg-white/5 mb-10" />
 
-                {/* SECCIÓN DE USUARIO / PROFILE */}
                 <div className="mt-auto md:mt-0">
                   {auth?.isAuthenticated ? (
                     <div className="space-y-4">
