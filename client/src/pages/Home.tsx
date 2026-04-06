@@ -8,6 +8,12 @@ import { ModalTryOn } from "../shared/components/ModalTryOn";
 import { motion } from "framer-motion";
 import "../assets/styles/style.css";
 
+// 🚀 IMPORTACIONES DE IMÁGENES ESTATICAS
+import imgHome from "../assets/images/imagen_home.jpg";
+import p1 from "../assets/images/p1.jpg";
+import p2 from "../assets/images/p2.jpg";
+import p3 from "../assets/images/p3.jpg";
+
 const Home = () => {
   const context = useContext(EcommerceContext) as any;
   const { isAuthenticated } = useContext(AuthContext) || {}; 
@@ -66,7 +72,7 @@ const Home = () => {
             </h1>
             
             <p className="text-base md:text-lg text-gray-400 max-w-md mx-auto md:mx-0 leading-relaxed font-medium italic">
-              "No es solo ropa, es el algoritmo de tu identidad." Experimenta  vestir digitalmente con el motor de Musa v1.0.
+              "No es solo ropa, es el algoritmo de tu identidad." Experimenta vestir digitalmente con el motor de Musa v1.0.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
@@ -91,7 +97,7 @@ const Home = () => {
             
             <div className="w-full h-full bg-[#111111] rounded-[3rem] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] relative">
               <img 
-                src="src/assets/images/imagen_home.jpg" 
+                src={imgHome} 
                 alt="Editorial" 
                 className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0 transition-all duration-1000 group-hover:scale-105" 
               />
@@ -150,7 +156,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 3. PRODUCT GRID: CAMBIO A grid-cols-1 PARA MOBILE */}
+      {/* 3. PRODUCT GRID */}
       <section id="coleccion" className="w-full bg-[#0A0A0A] py-24 md:py-32 scroll-mt-24 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-6">
           
@@ -180,7 +186,6 @@ const Home = () => {
             </Link>
           </div>
           
-          {/* APLICADO: grid-cols-1 para mobile y grid-cols-2/4 para pantallas grandes */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10">
             {arrProducts.length === 0 ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -263,21 +268,21 @@ const Home = () => {
               { 
                 name: "María González", 
                 text: "La calidad de los tejidos es espectacular, superó todas mis expectativas en cada detalle.", 
-                img: "src/assets/images/p1.jpg",
+                img: p1,
                 tag: "@mery_g",
                 highlight: "Espectacular"
               },
               { 
                 name: "Ana Rodríguez", 
                 text: "El probador virtual es magia pura. Compré sabiendo exactamente cómo me vería.", 
-                img: "src/assets/images/p3.jpg",
+                img: p3,
                 tag: "@ana_style",
                 highlight: "Magia Pura"
               },
               { 
                 name: "Mario Martínez", 
                 text: "Increíble variedad de estilos, la IA acertó perfectamente con mi talla en un solo intento.", 
-                img: "src/assets/images/p2.jpg",
+                img: p2,
                 tag: "@mario_mtz",
                 highlight: "Precisión"
               }
