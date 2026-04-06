@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { EcommerceContext } from "../context/EcommerceContext";
 import { AuthContext } from "../context/AuthContext"; 
 import { motion, AnimatePresence } from "framer-motion";
-
+import imgLogo from "../assets/images/logofinal.png";
 // SE ELIMINÓ EL IMPORT DE IMGLOGO PARA EVITAR ERRORES DE RUTA EN RENDER
 
 export const Navbar = () => {
@@ -46,7 +46,7 @@ export const Navbar = () => {
               <div className="w-11 h-11 bg-gradient-to-tr from-pink-600 to-purple-700 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg shadow-pink-500/20 group-hover:scale-110 transition-transform duration-500">
                 {/* Cargamos directamente desde la carpeta public */}
                 <img 
-                  src="/logo_proyecto.png" 
+                  src={imgLogo}
                   alt="Musa Logo" 
                   className="w-full h-full object-cover"
                   onError={(e) => {
