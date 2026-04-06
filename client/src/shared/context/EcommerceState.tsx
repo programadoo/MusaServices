@@ -1,16 +1,36 @@
 import { ReactNode, useState, useEffect, useMemo } from "react";
 import { EcommerceContext, Product, CartItem } from "./EcommerceContext";
 
+// 🚀 IMPORTACIONES DE IMÁGENES PARA PRODUCCIÓN
+// Asumiendo que EcommerceState está en src/shared/context/
+import imgProud from "../../assets/images/proud.jpeg";
+import aiImgProud from "../../assets/images/proud_final.png";
+
+import imgMonalisa from "../../assets/images/monalisa.jpeg";
+import aiImgMonalisa from "../../assets/images/monalisa_final.png";
+
+import imgGiallo from "../../assets/images/giallo.jpeg";
+import aiImgGiallo from "../../assets/images/giallo_final.png";
+
+import imgExpensive from "../../assets/images/expensive.jpeg";
+import aiImgExpensive from "../../assets/images/expensive_final.png";
+
+import imgClassic from "../../assets/images/classic.jpeg";
+import aiImgClassic from "../../assets/images/clasic_final.png"; // Ojo aquí con el nombre "clasic"
+
+import imgMusa from "../../assets/images/musa.jpeg";
+import aiImgMusa from "../../assets/images/musa_final.png";
+
 const EcommerceState = ({ children }: { children: ReactNode }) => {
-  // 1. Catálogo Completo de VillaTech
+  // 1. Catálogo Completo
   const [initState, setInitState] = useState<Product[]>([
     {
       id: 1,
       name: "Proud",
       price: 129.99,
       quantity: 15,
-      image: "src/assets/images/proud.jpeg",
-      aiImage: "src/assets/images/proud_final.png",
+      image: imgProud,
+      aiImage: aiImgProud,
       selected: false,
       stars: 4,
       reviews: 15,
@@ -22,8 +42,8 @@ const EcommerceState = ({ children }: { children: ReactNode }) => {
       name: "Monalisa",
       price: 400.65,
       quantity: 6,
-      image: "src/assets/images/monalisa.jpeg",
-      aiImage: "src/assets/images/monalisa_final.png",
+      image: imgMonalisa,
+      aiImage: aiImgMonalisa,
       selected: false,
       stars: 5,
       reviews: 31,
@@ -35,8 +55,8 @@ const EcommerceState = ({ children }: { children: ReactNode }) => {
       name: "Giallo",
       price: 100.1,
       quantity: 8,
-      image: "src/assets/images/giallo.jpeg",
-      aiImage: "src/assets/images/giallo_final.png",
+      image: imgGiallo,
+      aiImage: aiImgGiallo,
       selected: false,
       stars: 4,
       reviews: 23,
@@ -48,8 +68,8 @@ const EcommerceState = ({ children }: { children: ReactNode }) => {
       name: "Expensive",
       price: 29.99,
       quantity: 55,
-      image: "src/assets/images/expensive.jpeg",
-      aiImage: "src/assets/images/expensive_final.png",
+      image: imgExpensive,
+      aiImage: aiImgExpensive,
       selected: false,
       stars: 5,
       reviews: 25,
@@ -61,8 +81,8 @@ const EcommerceState = ({ children }: { children: ReactNode }) => {
       name: "Classic",
       price: 135.5,
       quantity: 17,
-      image: "src/assets/images/classic.jpeg",
-      aiImage: "src/assets/images/clasic_final.png",
+      image: imgClassic,
+      aiImage: aiImgClassic,
       selected: false,
       stars: 3,
       reviews: 5,
@@ -74,8 +94,8 @@ const EcommerceState = ({ children }: { children: ReactNode }) => {
       name: "Musa",
       price: 95.2,
       quantity: 9,
-      image: "src/assets/images/musa.jpeg",
-      aiImage: "src/assets/images/musa_final.png",
+      image: imgMusa,
+      aiImage: aiImgMusa,
       selected: false,
       stars: 4,
       reviews: 17,
