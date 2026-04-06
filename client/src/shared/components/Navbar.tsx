@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { EcommerceContext } from "../context/EcommerceContext";
 import { AuthContext } from "../context/AuthContext"; 
 import { motion, AnimatePresence } from "framer-motion";
-import imgLogo from "../assets/images/logofinal.png";
+import imgLogo from "../../assets/images/logofinal.png";
 // SE ELIMINÓ EL IMPORT DE IMGLOGO PARA EVITAR ERRORES DE RUTA EN RENDER
 
 export const Navbar = () => {
