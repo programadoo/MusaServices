@@ -25,7 +25,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
 
         // 1. Inferencia con Replicate
         const prediction = await replicate.predictions.create({
-            version: "levihsu/ootdiffusion:90649c0a221f757f005c2499d108d4850d536c615598fa20215a77035f299119",
+            version: "e3893af4fb4bd5741752b35b395348c5f7a9ab5c4776264f5d38e41418081ed7",
             input: { 
                 human_img: personUri, 
                 garm_img: garmentUri, 
