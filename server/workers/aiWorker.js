@@ -16,43 +16,43 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
     const { personUri, garmentUri, garmentDescription, category, userId } = job.data;
 
     try {
-        console.log(`🎨 [WORKER]: Procesando Try-On para usuario: ${userId} (Job: ${job.id})`);
+        console.log(`🎨 [WORKER]: Iniciando Musa Engine v1.6 para usuario: ${userId}`);
 
+        // 1. IDENTIFICACIÓN DE PRENDA
         let finalCategory = category ? category.toLowerCase().trim() : 'upper_body';
         const dressKeywords = ['vestido', 'dress', 'completo', 'largo', 'enterizo'];
         const isDress = (garmentDescription && dressKeywords.some(k => garmentDescription.toLowerCase().includes(k))) || 
-                        ['dress', 'dresses', 'full_body'].includes(finalCategory);
+                        ['dress', 'dresses', 'full_body', 'one-piece'].includes(finalCategory);
 
         let result;
 
         if (isDress) {
-            console.log(`👗 [WORKER]: Vestido detectado. Usando fashn-vton (Full Body).`);
-            // FASHN-VTON es el mejor para vestidos en Fal.ai
-            result = await fal.subscribe("fal-ai/fashn-vton", {
+            console.log(`👗 [WORKER]: Ejecutando Fashn v1.6 (Modo Cuerpo Completo)`);
+            // Usamos el endpoint específico que me pasaste
+            result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
                 input: { 
                     human_image_url: personUri, 
                     garment_image_url: garmentUri, 
-                    category: "all" // En fashn-vton 'all' es para cuerpo completo
+                    category: "one-piece" // Categoría obligatoria para vestidos en v1.6
                 }
             });
         } else {
-            // IDM-VTON para camisas o pantalones (es más barato y rápido)
-            const idmCategory = (finalCategory === 'lower_body' || finalCategory === 'pantalones') ? "Lower body" : "Upper body";
-            console.log(`👕 [WORKER]: Usando IDM-VTON para ${idmCategory}.`);
+            // Mapeo de categorías para prendas normales
+            const fashnCategory = (finalCategory === 'lower_body' || finalCategory === 'pantalones') ? "bottoms" : "tops";
+            console.log(`👕 [WORKER]: Ejecutando Fashn v1.6 para ${fashnCategory}`);
             
-            result = await fal.subscribe("fal-ai/idm-vton", {
+            result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
                 input: { 
                     human_image_url: personUri, 
                     garment_image_url: garmentUri, 
-                    description: garmentDescription || "clothing item", 
-                    category: idmCategory 
+                    category: fashnCategory 
                 }
             });
         }
 
         const falImageUrl = result.image.url;
 
-        // 2. Procesamiento y guardado en Supabase
+        // 2. PROCESAMIENTO Y STORAGE (Supabase)
         const imgRes = await axios.get(falImageUrl, { responseType: 'arraybuffer' });
         const fileName = `musa_${userId}_${Date.now()}.png`;
         
@@ -66,7 +66,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
             .from('musa-designs')
             .getPublicUrl(fileName);
 
-        // 3. Persistencia en MongoDB
+        // 3. PERSISTENCIA (MongoDB)
         const newGen = new Generation({ 
             userId, 
             personImage: personUri, 
@@ -77,7 +77,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
         });
         await newGen.save();
 
-        console.log(`✅ [WORKER]: Generación exitosa para Job ${job.id}`);
+        console.log(`✅ [WORKER]: Generación v1.6 exitosa para Job ${job.id}`);
         return { imageUrl: publicUrl };
 
     } catch (error) {
@@ -86,5 +86,10 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
         throw error; 
     }
 }, { connection });
+
+// --- MONITOREO DE EVENTOS ---
+aiWorker.on('active', (job) => console.log(`🚀 [WORKER]: Job ${job.id} en marcha`));
+aiWorker.on('completed', (job) => console.log(`✨ [WORKER]: Job ${job.id} finalizado con éxito`));
+aiWorker.on('error', (err) => console.error('🔥 [WORKER_FATAL]:', err.message));
 
 export default aiWorker;
