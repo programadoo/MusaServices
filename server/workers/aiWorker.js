@@ -1,10 +1,10 @@
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
-import { supabase } from '../config/services.js'; // Quitamos replicate de aquí
+import { supabase } from '../config/services.js';
 import Generation from '../models/Generation.js';
 import User from '../models/User.js';
 import axios from 'axios';
-import * as fal from '@fal-ai/serverless-client'; // Importamos la nueva librería
+import * as fal from '@fal-ai/serverless-client';
 
 /**
  * CONFIGURACIÓN DE CONEXIÓN - MUSA ENGINE
@@ -23,13 +23,33 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
     try {
         console.log(`🎨 [WORKER]: Procesando Try-On con Fal.ai para usuario: ${userId} (Job: ${job.id})`);
 
-        // 1. Inferencia con Fal.ai (Usamos subscribe que es mejor para tareas en background)
+        // --- INICIO DEL FIX DE VESTIDOS (CUERPO COMPLETO) ---
+        let finalCategory = category ? category.toLowerCase().trim() : 'upper_body';
+        
+        const dressKeywords = ['vestido', 'dress', 'completo', 'largo', 'enterizo'];
+        
+        const isDressByDescription = garmentDescription && dressKeywords.some(keyword => garmentDescription.toLowerCase().includes(keyword));
+        const isDressByCategory = finalCategory === 'dress' || finalCategory === 'dresses' || finalCategory === 'full_body';
+
+        if (isDressByDescription || isDressByCategory) {
+            finalCategory = 'dresses'; 
+            console.log(`👗 [WORKER]: Se detectó un vestido. Usando categoría 'dresses'.`);
+        } else if (finalCategory === 'lower_body' || finalCategory === 'pantalones' || finalCategory === 'skirt') {
+             finalCategory = 'lower_body';
+             console.log(`👖 [WORKER]: Se detectó prenda inferior. Usando categoría 'lower_body'.`);
+        } else {
+            finalCategory = 'upper_body';
+            console.log(`👕 [WORKER]: Se asume prenda superior. Usando categoría 'upper_body'.`);
+        }
+        // --- FIN DEL FIX ---
+
+        // 1. Inferencia con Fal.ai (Usamos la categoría corregida)
         const result = await fal.subscribe("fal-ai/idm-vton", {
             input: { 
                 human_image_url: personUri, 
                 garment_image_url: garmentUri, 
                 description: garmentDescription || "clothing item", 
-                category: category || "upper_body"
+                category: finalCategory // Pasamos 'dresses', 'upper_body' o 'lower_body'
             },
             logs: true,
             onQueueUpdate: (update) => {
@@ -62,7 +82,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
             personImage: personUri, 
             garmentImage: garmentUri, 
             resultImage: publicUrl, 
-            category, 
+            category: finalCategory, // Guardamos la categoría final para el historial
             description: garmentDescription 
         });
         await newGen.save();
