@@ -37,7 +37,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
             console.log(`👗 [WORKER]: Vestido detectado. Usando OOT-Diffusion (All Body).`);
             
             // Usamos OOT-Diffusion específicamente para los vestidos
-            result = await fal.subscribe("fal-ai/oot-diffusion", {
+            result = await fal.subscribe("fal-ai/ootdiffusion", {
                 input: { 
                     base_image_url: personUri,       // OOT usa base_image_url
                     garment_image_url: garmentUri, 
