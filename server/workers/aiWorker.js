@@ -23,8 +23,9 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
     try {
         console.log(`🎨 [WORKER]: Procesando Try-On con Fal.ai para usuario: ${userId} (Job: ${job.id})`);
 
-        // --- INICIO DEL FIX DE VESTIDOS (CUERPO COMPLETO) ---
+        // --- INICIO DEL FIX AGRESIVO DE VESTIDOS (CUERPO COMPLETO) ---
         let finalCategory = category ? category.toLowerCase().trim() : 'upper_body';
+        let finalDescription = garmentDescription || "clothing item"; // Por defecto
         
         const dressKeywords = ['vestido', 'dress', 'completo', 'largo', 'enterizo'];
         
@@ -33,7 +34,9 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
 
         if (isDressByDescription || isDressByCategory) {
             finalCategory = 'dresses'; 
-            console.log(`👗 [WORKER]: Se detectó un vestido. Usando categoría 'dresses'.`);
+            // OBLIGAMOS un prompt en inglés técnico y agresivo para VTO
+            finalDescription = "A full-length, complete dress that covers the entire body, replacing the existing top and pants completely. The bottom part must be a flowing dress, NOT pants.";
+            console.log(`👗 [WORKER]: Se detectó un vestido. Usando categoría 'dresses' y PROMPT FORZADO.`);
         } else if (finalCategory === 'lower_body' || finalCategory === 'pantalones' || finalCategory === 'skirt') {
              finalCategory = 'lower_body';
              console.log(`👖 [WORKER]: Se detectó prenda inferior. Usando categoría 'lower_body'.`);
@@ -43,12 +46,12 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
         }
         // --- FIN DEL FIX ---
 
-        // 1. Inferencia con Fal.ai (Usamos la categoría corregida)
+        // 1. Inferencia con Fal.ai (Usamos la categoría corregida y la descripción forzada)
         const result = await fal.subscribe("fal-ai/idm-vton", {
             input: { 
                 human_image_url: personUri, 
                 garment_image_url: garmentUri, 
-                description: garmentDescription || "clothing item", 
+                description: finalDescription, // Usamos la descripción ultra-específica si es vestido
                 category: finalCategory // Pasamos 'dresses', 'upper_body' o 'lower_body'
             },
             logs: true,
