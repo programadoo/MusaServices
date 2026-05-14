@@ -16,38 +16,43 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
     const { personUri, garmentUri, garmentDescription, category, userId } = job.data;
 
     try {
-        console.log(`🎨 [WORKER]: Ejecutando Musa Engine v1.6 para usuario: ${userId}`);
+        console.log(`🎨 [WORKER]: Ejecutando Musa Engine v1.6 (Schema Estricto) para Job ${job.id}`);
 
-        let finalCategory = category ? category.toLowerCase().trim() : 'tops';
+        // 1. MAPEÓ DE CATEGORÍAS SEGÚN EL ESQUEMA PROPORCIONADO
+        let finalCategory = category ? category.toLowerCase().trim() : 'auto';
         const dressKeywords = ['vestido', 'dress', 'completo', 'largo', 'enterizo'];
         const isDress = (garmentDescription && dressKeywords.some(k => garmentDescription.toLowerCase().includes(k))) || 
-                        ['dress', 'dresses', 'full_body', 'one-piece', 'one_piece'].includes(finalCategory);
+                        ['dress', 'dresses', 'full_body', 'one-piece', 'one-pieces'].includes(finalCategory);
 
-        let result;
-
-        // Mapeo exacto de categorías para evitar el Error 422
         let falCategory = "tops";
         if (isDress) {
-            falCategory = "one-piece"; // Probamos con el guion medio que es el estándar de Fashn
-        } else if (finalCategory === 'lower_body' || finalCategory === 'pantalones' || finalCategory === 'bottoms') {
+            falCategory = "one-pieces"; // Exactamente como dice tu esquema
+        } else if (['lower_body', 'pantalones', 'bottoms'].includes(finalCategory)) {
             falCategory = "bottoms";
         }
 
-        console.log(`🚀 [WORKER]: Enviando a v1.6 con categoría: ${falCategory}`);
-
-        // 1. Inferencia con esquema v1.6 estricto
-        result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
+        // 2. INFERENCIA CON EL ESQUEMA EXACTO (Fashn v1.6)
+        const result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
             input: { 
-                human_image_url: personUri, 
-                garment_image_url: garmentUri, 
-                category: falCategory,
-                garment_description: garmentDescription || "fashion item" // Campo extra para evitar 422
+                model_image: personUri,    // Según esquema: model_image
+                garment_image: garmentUri, // Según esquema: garment_image
+                category: falCategory,     // tops, bottoms, one-pieces, auto
+                mode: "balanced",
+                garment_photo_type: "auto",
+                num_samples: 1,
+                segmentation_free: true,
+                output_format: "png"
             }
         });
 
-        const falImageUrl = result.image.url;
+        // 3. EXTRACCIÓN DE URL SEGÚN EL ESQUEMA DE SALIDA
+        // El esquema dice que devuelve un objeto con una lista "images"
+        if (!result.images || result.images.length === 0) {
+            throw new Error("No se generaron imágenes en la respuesta de Fal.ai");
+        }
+        const falImageUrl = result.images[0].url;
 
-        // 2. Procesamiento y guardado en Supabase
+        // 4. PROCESAMIENTO Y STORAGE (Axios -> Supabase)
         const imgRes = await axios.get(falImageUrl, { responseType: 'arraybuffer' });
         const fileName = `musa_${userId}_${Date.now()}.png`;
         
@@ -57,33 +62,31 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
 
         if (uploadError) throw new Error(`Error en Supabase: ${uploadError.message}`);
 
-        const { data: { publicUrl } } = supabase.storage
-            .from('musa-designs')
-            .getPublicUrl(fileName);
+        const { data: { publicUrl } } = supabase.storage.from('musa-designs').getPublicUrl(fileName);
 
-        // 3. Persistencia en MongoDB
+        // 5. PERSISTENCIA (MongoDB)
         const newGen = new Generation({ 
             userId, 
             personImage: personUri, 
             garmentImage: garmentUri, 
             resultImage: publicUrl, 
-            category: isDress ? 'dresses' : finalCategory, 
+            category: falCategory, 
             description: garmentDescription 
         });
         await newGen.save();
 
-        console.log(`✅ [WORKER]: Generación v1.6 exitosa.`);
+        console.log(`✅ [WORKER]: Generación exitosa para Job ${job.id}`);
         return { imageUrl: publicUrl };
 
     } catch (error) {
-        console.error(`❌ [WORKER_ERROR] (Job ${job.id}):`, error.message);
-        // Si el error es 422, el log de abajo te dirá exactamente qué campo falta
-        if (error.response && error.response.data) {
-            console.error(`Detalle del 422:`, JSON.stringify(error.response.data));
-        }
+        console.error(`❌ [WORKER_ERROR] Job ${job.id}:`, error.message);
         if (userId) await User.findByIdAndUpdate(userId, { $inc: { credits: 1 } });
         throw error; 
     }
 }, { connection });
+
+// Monitoreo
+aiWorker.on('active', (job) => console.log(`🚀 [WORKER]: Iniciando Job ${job.id}`));
+aiWorker.on('completed', (job) => console.log(`✨ [WORKER]: Job ${job.id} finalizado`));
 
 export default aiWorker;
