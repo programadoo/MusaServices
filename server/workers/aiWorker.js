@@ -1,9 +1,10 @@
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
-import { replicate, supabase } from '../config/services.js';
+import { supabase } from '../config/services.js'; // Quitamos replicate de aquí
 import Generation from '../models/Generation.js';
 import User from '../models/User.js';
 import axios from 'axios';
+import * as fal from '@fal-ai/serverless-client'; // Importamos la nueva librería
 
 /**
  * CONFIGURACIÓN DE CONEXIÓN - MUSA ENGINE
@@ -14,32 +15,35 @@ const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const connection = new Redis(redisUrl, {
     maxRetriesPerRequest: null, // Requerido por BullMQ
     connectTimeout: 10000,       // 10 segundos de margen
-    // NOTA: Sin objeto 'tls' para evitar el bloqueo del TLSSocket en Render.
 });
 
 const aiWorker = new Worker('ai-tasks', async (job) => {
     const { personUri, garmentUri, garmentDescription, category, userId } = job.data;
 
     try {
-        console.log(`🎨 [WORKER]: Procesando Try-On para usuario: ${userId} (Job: ${job.id})`);
+        console.log(`🎨 [WORKER]: Procesando Try-On con Fal.ai para usuario: ${userId} (Job: ${job.id})`);
 
-        // 1. Inferencia con Replicate
-        const prediction = await replicate.predictions.create({
-            version: "e3893af4fb4bd5741752b35b395348c5f7a9ab5c4776264f5d38e41418081ed7",
+        // 1. Inferencia con Fal.ai (Usamos subscribe que es mejor para tareas en background)
+        const result = await fal.subscribe("fal-ai/idm-vton", {
             input: { 
-                human_img: personUri, 
-                garm_img: garmentUri, 
-                garment_des: garmentDescription, 
-                category, 
-                is_checked: true 
+                human_image_url: personUri, 
+                garment_image_url: garmentUri, 
+                description: garmentDescription || "clothing item", 
+                category: category || "upper_body"
+            },
+            logs: true,
+            onQueueUpdate: (update) => {
+                if (update.status === "IN_PROGRESS") {
+                    console.log(`⏳ [WORKER]: Fal.ai está procesando el Job ${job.id}...`);
+                }
             }
         });
 
-        const result = await replicate.wait(prediction);
-        const replicateUrl = Array.isArray(result.output) ? result.output[0] : result.output;
+        // Fal.ai devuelve la URL de la imagen generada aquí
+        const falImageUrl = result.image.url;
 
         // 2. Procesamiento de imagen y almacenamiento en Supabase
-        const imgRes = await axios.get(replicateUrl, { responseType: 'arraybuffer' });
+        const imgRes = await axios.get(falImageUrl, { responseType: 'arraybuffer' });
         const fileName = `musa_${userId}_${Date.now()}.png`;
         
         const { error: uploadError } = await supabase.storage
