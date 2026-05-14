@@ -6,11 +6,7 @@ import User from '../models/User.js';
 import axios from 'axios';
 import * as fal from '@fal-ai/serverless-client';
 
-/**
- * CONFIGURACIÓN DE CONEXIÓN - MUSA ENGINE
- */
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
-
 const connection = new Redis(redisUrl, {
     maxRetriesPerRequest: null, 
     connectTimeout: 10000,      
@@ -23,58 +19,37 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
         console.log(`🎨 [WORKER]: Procesando Try-On para usuario: ${userId} (Job: ${job.id})`);
 
         let finalCategory = category ? category.toLowerCase().trim() : 'upper_body';
-        let finalDescription = garmentDescription || "clothing item"; 
-        
         const dressKeywords = ['vestido', 'dress', 'completo', 'largo', 'enterizo'];
-        const isDressByDescription = garmentDescription && dressKeywords.some(keyword => garmentDescription.toLowerCase().includes(keyword));
-        const isDressByCategory = finalCategory === 'dress' || finalCategory === 'dresses' || finalCategory === 'full_body';
+        const isDress = (garmentDescription && dressKeywords.some(k => garmentDescription.toLowerCase().includes(k))) || 
+                        ['dress', 'dresses', 'full_body'].includes(finalCategory);
 
         let result;
 
-        // --- ENRUTADOR DINÁMICO DE MODELOS ---
-        if (isDressByDescription || isDressByCategory) {
-            finalCategory = 'dresses'; 
-            console.log(`👗 [WORKER]: Vestido detectado. Usando OOT-Diffusion (All Body).`);
-            
-            // Usamos OOT-Diffusion específicamente para los vestidos
-            result = await fal.subscribe("fal-ai/ootdiffusion", {
+        if (isDress) {
+            console.log(`👗 [WORKER]: Vestido detectado. Usando fashn-vton (Full Body).`);
+            // FASHN-VTON es el mejor para vestidos en Fal.ai
+            result = await fal.subscribe("fal-ai/fashn-vton", {
                 input: { 
-                    base_image_url: personUri,       // OOT usa base_image_url
+                    human_image_url: personUri, 
                     garment_image_url: garmentUri, 
-                    model_type: "full_body",         // Obliga a borrar los pantalones
-                    category: "all_body",
-                    nsfw_filter: true
-                },
-                logs: true,
-                onQueueUpdate: (update) => {
-                    if (update.status === "IN_PROGRESS") console.log(`⏳ [WORKER]: OOT-Diffusion procesando...`);
+                    category: "all" // En fashn-vton 'all' es para cuerpo completo
                 }
             });
         } else {
-            if (finalCategory === 'lower_body' || finalCategory === 'pantalones' || finalCategory === 'skirt') {
-                 finalCategory = 'lower_body';
-                 console.log(`👖 [WORKER]: Prenda inferior. Usando IDM-VTON.`);
-            } else {
-                finalCategory = 'upper_body';
-                console.log(`👕 [WORKER]: Prenda superior. Usando IDM-VTON.`);
-            }
-
-            // Usamos IDM-VTON para el resto de la ropa
+            // IDM-VTON para camisas o pantalones (es más barato y rápido)
+            const idmCategory = (finalCategory === 'lower_body' || finalCategory === 'pantalones') ? "Lower body" : "Upper body";
+            console.log(`👕 [WORKER]: Usando IDM-VTON para ${idmCategory}.`);
+            
             result = await fal.subscribe("fal-ai/idm-vton", {
                 input: { 
-                    human_image_url: personUri,      // IDM usa human_image_url
+                    human_image_url: personUri, 
                     garment_image_url: garmentUri, 
-                    description: finalDescription, 
-                    category: finalCategory 
-                },
-                logs: true,
-                onQueueUpdate: (update) => {
-                    if (update.status === "IN_PROGRESS") console.log(`⏳ [WORKER]: IDM-VTON procesando...`);
+                    description: garmentDescription || "clothing item", 
+                    category: idmCategory 
                 }
             });
         }
 
-        // Fal.ai devuelve la URL de la imagen
         const falImageUrl = result.image.url;
 
         // 2. Procesamiento y guardado en Supabase
@@ -97,7 +72,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
             personImage: personUri, 
             garmentImage: garmentUri, 
             resultImage: publicUrl, 
-            category: finalCategory, 
+            category: isDress ? 'dresses' : finalCategory, 
             description: garmentDescription 
         });
         await newGen.save();
@@ -107,15 +82,9 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
 
     } catch (error) {
         console.error(`❌ [WORKER_ERROR] (Job ${job.id}):`, error.message);
-        if (userId) {
-            await User.findByIdAndUpdate(userId, { $inc: { credits: 1 } });
-        }
+        if (userId) await User.findByIdAndUpdate(userId, { $inc: { credits: 1 } });
         throw error; 
     }
 }, { connection });
-
-aiWorker.on('active', (job) => console.log(`🚀 [WORKER]: Iniciando Job ${job.id}`));
-aiWorker.on('completed', (job) => console.log(`✨ [WORKER]: Job ${job.id} finalizado`));
-aiWorker.on('error', (err) => console.error('🔥 [WORKER_FATAL]: Error:', err.message));
 
 export default aiWorker;
