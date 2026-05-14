@@ -16,43 +16,38 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
     const { personUri, garmentUri, garmentDescription, category, userId } = job.data;
 
     try {
-        console.log(`🎨 [WORKER]: Iniciando Musa Engine v1.6 para usuario: ${userId}`);
+        console.log(`🎨 [WORKER]: Ejecutando Musa Engine v1.6 para usuario: ${userId}`);
 
-        // 1. IDENTIFICACIÓN DE PRENDA
-        let finalCategory = category ? category.toLowerCase().trim() : 'upper_body';
+        let finalCategory = category ? category.toLowerCase().trim() : 'tops';
         const dressKeywords = ['vestido', 'dress', 'completo', 'largo', 'enterizo'];
         const isDress = (garmentDescription && dressKeywords.some(k => garmentDescription.toLowerCase().includes(k))) || 
-                        ['dress', 'dresses', 'full_body', 'one-piece'].includes(finalCategory);
+                        ['dress', 'dresses', 'full_body', 'one-piece', 'one_piece'].includes(finalCategory);
 
         let result;
 
+        // Mapeo exacto de categorías para evitar el Error 422
+        let falCategory = "tops";
         if (isDress) {
-            console.log(`👗 [WORKER]: Ejecutando Fashn v1.6 (Modo Cuerpo Completo)`);
-            // Usamos el endpoint específico que me pasaste
-            result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
-                input: { 
-                    human_image_url: personUri, 
-                    garment_image_url: garmentUri, 
-                    category: "one-piece" // Categoría obligatoria para vestidos en v1.6
-                }
-            });
-        } else {
-            // Mapeo de categorías para prendas normales
-            const fashnCategory = (finalCategory === 'lower_body' || finalCategory === 'pantalones') ? "bottoms" : "tops";
-            console.log(`👕 [WORKER]: Ejecutando Fashn v1.6 para ${fashnCategory}`);
-            
-            result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
-                input: { 
-                    human_image_url: personUri, 
-                    garment_image_url: garmentUri, 
-                    category: fashnCategory 
-                }
-            });
+            falCategory = "one-piece"; // Probamos con el guion medio que es el estándar de Fashn
+        } else if (finalCategory === 'lower_body' || finalCategory === 'pantalones' || finalCategory === 'bottoms') {
+            falCategory = "bottoms";
         }
+
+        console.log(`🚀 [WORKER]: Enviando a v1.6 con categoría: ${falCategory}`);
+
+        // 1. Inferencia con esquema v1.6 estricto
+        result = await fal.subscribe("fal-ai/fashn/tryon/v1.6", {
+            input: { 
+                human_image_url: personUri, 
+                garment_image_url: garmentUri, 
+                category: falCategory,
+                garment_description: garmentDescription || "fashion item" // Campo extra para evitar 422
+            }
+        });
 
         const falImageUrl = result.image.url;
 
-        // 2. PROCESAMIENTO Y STORAGE (Supabase)
+        // 2. Procesamiento y guardado en Supabase
         const imgRes = await axios.get(falImageUrl, { responseType: 'arraybuffer' });
         const fileName = `musa_${userId}_${Date.now()}.png`;
         
@@ -66,7 +61,7 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
             .from('musa-designs')
             .getPublicUrl(fileName);
 
-        // 3. PERSISTENCIA (MongoDB)
+        // 3. Persistencia en MongoDB
         const newGen = new Generation({ 
             userId, 
             personImage: personUri, 
@@ -77,19 +72,18 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
         });
         await newGen.save();
 
-        console.log(`✅ [WORKER]: Generación v1.6 exitosa para Job ${job.id}`);
+        console.log(`✅ [WORKER]: Generación v1.6 exitosa.`);
         return { imageUrl: publicUrl };
 
     } catch (error) {
         console.error(`❌ [WORKER_ERROR] (Job ${job.id}):`, error.message);
+        // Si el error es 422, el log de abajo te dirá exactamente qué campo falta
+        if (error.response && error.response.data) {
+            console.error(`Detalle del 422:`, JSON.stringify(error.response.data));
+        }
         if (userId) await User.findByIdAndUpdate(userId, { $inc: { credits: 1 } });
         throw error; 
     }
 }, { connection });
-
-// --- MONITOREO DE EVENTOS ---
-aiWorker.on('active', (job) => console.log(`🚀 [WORKER]: Job ${job.id} en marcha`));
-aiWorker.on('completed', (job) => console.log(`✨ [WORKER]: Job ${job.id} finalizado con éxito`));
-aiWorker.on('error', (err) => console.error('🔥 [WORKER_FATAL]:', err.message));
 
 export default aiWorker;
