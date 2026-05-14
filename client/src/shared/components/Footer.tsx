@@ -13,7 +13,7 @@ export const Footer = () => {
           <div className="md:col-span-5 space-y-10 text-center md:text-left">
             <div className="space-y-4">
               <h3 className="text-3xl md:text-4xl font-black tracking-tighter uppercase leading-none">
-                LUMEN <span className="text-pink-500 italic">DIGITAL</span>
+                ICONIC <span className="text-pink-500 italic">CVF</span>
               </h3>
               <div className="h-[2px] w-12 bg-pink-500 mx-auto md:mx-0"></div>
             </div>

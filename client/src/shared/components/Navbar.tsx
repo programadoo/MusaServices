@@ -55,7 +55,7 @@ export const Navbar = () => {
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-black tracking-[-0.05em] uppercase text-white leading-none">LUMEN</span>
+                <span className="text-xl font-black tracking-[-0.05em] uppercase text-white leading-none">ICONIC CVF</span>
               </div>
             </Link>
           </div>
