@@ -52,7 +52,9 @@ const aiWorker = new Worker('ai-tasks', async (job) => {
                 human_image_url: personUri, 
                 garment_image_url: garmentUri, 
                 description: finalDescription, // Usamos la descripción ultra-específica si es vestido
-                category: finalCategory // Pasamos 'dresses', 'upper_body' o 'lower_body'
+                model_type: "full_body", // Esto es clave para que borre los pantalones
+                category: "all_body",
+                nsfw_filter: true// Pasamos 'dresses', 'upper_body' o 'lower_body'
             },
             logs: true,
             onQueueUpdate: (update) => {
